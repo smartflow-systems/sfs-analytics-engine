@@ -52,10 +52,10 @@ const mockReports = [
 export default function Reports() {
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="glass-card p-8 gold-glow flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Reports</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-4xl luxury-heading mb-2" data-testid="text-page-title">Reports</h1>
+          <p className="text-sm text-sf-text-secondary">
             Create and manage custom analytics reports
           </p>
         </div>
@@ -69,17 +69,17 @@ export default function Reports() {
         {mockReports.map((report) => (
           <Card
             key={report.id}
-            className="hover-elevate active-elevate-2"
+            className="glass-card gold-glow hover-elevate-2 group transition-all"
             data-testid={`card-report-${report.id}`}
           >
             <CardHeader>
               <div className="flex items-start justify-between gap-2">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-                <Badge variant="outline" data-testid={`badge-report-type-${report.id}`}>
+                <FileText className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
+                <Badge variant="outline" className="luxury-badge" data-testid={`badge-report-type-${report.id}`}>
                   {report.type}
                 </Badge>
               </div>
-              <CardTitle className="text-base mt-2" data-testid={`text-report-name-${report.id}`}>
+              <CardTitle className="text-base mt-2 luxury-text" data-testid={`text-report-name-${report.id}`}>
                 {report.name}
               </CardTitle>
             </CardHeader>

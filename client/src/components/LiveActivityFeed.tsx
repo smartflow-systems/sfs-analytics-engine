@@ -40,15 +40,15 @@ export function LiveActivityFeed() {
   }, [lastEvent]);
 
   return (
-    <Card className="rounded-xl border bg-card border-card-border shadow-sm">
+    <Card className="glass-card rounded-xl gold-glow">
       <CardHeader className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
+            <CardTitle className="text-lg font-semibold flex items-center gap-2 luxury-text">
+              <Activity className="h-5 w-5 text-primary gold-pulse" />
               Live Activity Feed
             </CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
+            <CardDescription className="text-sm text-sf-text-secondary">
               Real-time event stream
             </CardDescription>
           </div>
@@ -61,15 +61,15 @@ export function LiveActivityFeed() {
                 variant={isConnected ? "default" : "secondary"}
                 className={`${
                   isConnected
-                    ? "bg-green-500/10 text-green-600 border-green-500/20"
+                    ? "bg-primary/10 text-primary border-primary/30 gold-glow"
                     : "bg-gray-500/10 text-gray-600"
                 }`}
               >
                 <span className="relative flex h-2 w-2 mr-1.5">
                   {isConnected && (
                     <>
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                     </>
                   )}
                   {!isConnected && (
@@ -109,15 +109,15 @@ export function LiveActivityFeed() {
                     damping: 30,
                     delay: index * 0.02,
                   }}
-                  className="flex items-center justify-between p-3 rounded-lg border bg-card/50 hover-elevate group"
+                  className="flex items-center justify-between p-3 rounded-lg glass-panel gold-border hover-elevate-2 group"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse group-hover:scale-125 transition-transform" />
+                    <div className="w-2 h-2 rounded-full bg-primary gold-pulse group-hover:scale-125 transition-transform" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <Badge
                           variant="secondary"
-                          className="font-mono text-xs bg-primary/10 text-primary"
+                          className="font-mono text-xs luxury-badge"
                         >
                           {event.event}
                         </Badge>

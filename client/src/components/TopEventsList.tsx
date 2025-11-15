@@ -9,10 +9,10 @@ interface TopEventsListProps {
 
 export function TopEventsList({ topEvents, isLoading }: TopEventsListProps) {
   return (
-    <Card data-testid="card-top-events" className="rounded-xl border bg-card border-card-border shadow-sm">
+    <Card data-testid="card-top-events" className="glass-card rounded-xl gold-glow">
       <CardHeader className="p-6">
-        <CardTitle className="text-lg font-semibold">Top Events</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
+        <CardTitle className="text-lg font-semibold luxury-text">Top Events</CardTitle>
+        <CardDescription className="text-sm text-sf-text-secondary">
           Most frequently tracked events
         </CardDescription>
       </CardHeader>
@@ -39,20 +39,20 @@ export function TopEventsList({ topEvents, isLoading }: TopEventsListProps) {
             {topEvents.map((event, index) => (
               <div
                 key={event.event}
-                className="flex items-center justify-between hover-elevate rounded-md p-2 -mx-2"
+                className="flex items-center justify-between hover-elevate-2 rounded-md p-3 -mx-2 gold-border group transition-all"
                 data-testid={`row-event-${index}`}
               >
                 <div className="flex-1">
-                  <p className="font-mono text-sm font-medium" data-testid={`text-event-name-${index}`}>
+                  <p className="font-mono text-sm font-medium luxury-text group-hover:text-primary transition-colors" data-testid={`text-event-name-${index}`}>
                     {event.event}
                   </p>
-                  <p className="text-xs text-muted-foreground" data-testid={`text-event-count-${index}`}>
+                  <p className="text-xs text-sf-text-muted" data-testid={`text-event-count-${index}`}>
                     {event.count.toLocaleString()} events
                   </p>
                 </div>
                 <Badge
                   variant="secondary"
-                  className="ml-2 bg-primary/10 text-primary hover:bg-primary/20"
+                  className="ml-2 luxury-badge"
                   data-testid={`badge-event-count-${index}`}
                 >
                   {event.count}

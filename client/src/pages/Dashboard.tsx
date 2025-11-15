@@ -35,10 +35,12 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-page-title">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track your events and monitor user activity in real-time
+      <div className="glass-card p-8 gold-glow">
+        <h1 className="text-5xl luxury-heading mb-2" data-testid="text-page-title">
+          SFS Analytics Engine
+        </h1>
+        <p className="text-lg text-sf-text-secondary">
+          Luxurious event tracking with real-time insights ✨
         </p>
       </div>
 

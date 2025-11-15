@@ -50,12 +50,12 @@ export function RecentEventsTable() {
   };
 
   return (
-    <Card data-testid="card-recent-events" className="rounded-xl border bg-card border-card-border shadow-sm">
+    <Card data-testid="card-recent-events" className="glass-card rounded-xl gold-glow">
       <CardHeader className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
+            <CardTitle className="text-lg font-semibold luxury-text">Recent Activity</CardTitle>
+            <CardDescription className="text-sm text-sf-text-secondary">
               Latest events tracked in real-time
             </CardDescription>
           </div>
@@ -114,7 +114,7 @@ export function RecentEventsTable() {
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className="font-mono text-xs bg-primary/10 text-primary hover:bg-primary/20"
+                        className="font-mono text-xs luxury-badge"
                         data-testid={`badge-event-name-${index}`}
                       >
                         {event.event}

@@ -12,18 +12,18 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Settings</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="glass-card p-8 gold-glow">
+        <h1 className="text-4xl luxury-heading mb-2" data-testid="text-page-title">Settings</h1>
+        <p className="text-sm text-sf-text-secondary">
           Manage your account and application preferences
         </p>
       </div>
 
       <div className="space-y-6">
-        <Card>
+        <Card className="glass-card gold-glow">
           <CardHeader>
-            <CardTitle>API Configuration</CardTitle>
-            <CardDescription>
+            <CardTitle className="luxury-text">API Configuration</CardTitle>
+            <CardDescription className="text-sf-text-secondary">
               Configure your API keys and tracking settings
             </CardDescription>
           </CardHeader>
@@ -55,10 +55,10 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card gold-glow">
           <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <CardDescription>
+            <CardTitle className="luxury-text">Notifications</CardTitle>
+            <CardDescription className="text-sf-text-secondary">
               Choose how you want to receive alerts and updates
             </CardDescription>
           </CardHeader>
@@ -94,10 +94,10 @@ export default function Settings() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="glass-card gold-glow">
           <CardHeader>
-            <CardTitle>Data Management</CardTitle>
-            <CardDescription>
+            <CardTitle className="luxury-text">Data Management</CardTitle>
+            <CardDescription className="text-sf-text-secondary">
               Configure data retention and storage preferences
             </CardDescription>
           </CardHeader>
