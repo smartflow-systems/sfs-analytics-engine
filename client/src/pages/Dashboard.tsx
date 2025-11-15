@@ -5,6 +5,10 @@ import { TopEventsList } from "@/components/TopEventsList";
 import { RecentEventsTable } from "@/components/RecentEventsTable";
 import { LiveActivityFeed } from "@/components/LiveActivityFeed";
 import { CircuitAnimation } from "@/components/CircuitAnimation";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { QuickFilters } from "@/components/QuickFilters";
+import { FunnelVisualization } from "@/components/FunnelVisualization";
+import { AIInsights } from "@/components/AIInsights";
 import { Activity, Users, MousePointer, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,11 +39,18 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold" data-testid="text-page-title">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track your events and monitor user activity in real-time
-        </p>
+      <div className="glass-card p-8 gold-glow">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-5xl luxury-heading mb-2" data-testid="text-page-title">
+              SFS Analytics Engine
+            </h1>
+            <p className="text-lg text-sf-text-secondary">
+              Luxurious event tracking with real-time insights ✨
+            </p>
+          </div>
+          <DateRangePicker />
+        </div>
       </div>
 
       {isLoading ? (
@@ -87,18 +98,23 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <EventChart />
+      <div className="grid gap-6 lg:grid-cols-4">
+        <div className="lg:col-span-3">
+          <div className="grid gap-6">
+            <EventChart />
+            <FunnelVisualization />
+          </div>
         </div>
-        <div>
+        <div className="space-y-6">
+          <QuickFilters />
           <TopEventsList topEvents={overview?.topEvents || []} isLoading={isLoading} />
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         <LiveActivityFeed />
         <CircuitAnimation />
+        <AIInsights />
       </div>
 
       <RecentEventsTable />

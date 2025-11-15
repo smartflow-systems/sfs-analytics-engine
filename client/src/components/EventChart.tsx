@@ -20,10 +20,10 @@ export function EventChart() {
   })) || [];
 
   return (
-    <Card data-testid="card-event-chart" className="rounded-xl border bg-card border-card-border shadow-sm">
+    <Card data-testid="card-event-chart" className="glass-card rounded-xl gold-glow">
       <CardHeader className="p-6">
-        <CardTitle className="text-lg font-semibold">Event Volume</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
+        <CardTitle className="text-lg font-semibold luxury-text">Event Volume</CardTitle>
+        <CardDescription className="text-sm text-sf-text-secondary">
           Daily event tracking over the last 30 days
         </CardDescription>
       </CardHeader>
@@ -35,8 +35,9 @@ export function EventChart() {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--sf-gold))" stopOpacity={0.4} />
+                  <stop offset="50%" stopColor="hsl(var(--sf-gold))" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="hsl(var(--sf-gold))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.3} />
@@ -63,8 +64,8 @@ export function EventChart() {
               <Area
                 type="monotone"
                 dataKey="events"
-                stroke="hsl(var(--chart-1))"
-                strokeWidth={2}
+                stroke="hsl(var(--sf-gold))"
+                strokeWidth={2.5}
                 fillOpacity={1}
                 fill="url(#colorEvents)"
               />

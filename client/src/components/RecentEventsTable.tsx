@@ -20,6 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { exportEventsAsCSV, exportEventsAsJSON, getTimestampedFilename } from "@/lib/export";
+import { EventDetailDialog } from "@/components/EventDetailDialog";
+import { useState } from "react";
 
 interface Event {
   id: string;
@@ -30,6 +32,9 @@ interface Event {
 }
 
 export function RecentEventsTable() {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const { data, isLoading } = useQuery<{ events: Event[] }>({
     queryKey: ["/api/analytics/events"],
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -49,13 +54,18 @@ export function RecentEventsTable() {
     }
   };
 
+  const handleRowClick = (event: Event) => {
+    setSelectedEvent(event);
+    setDialogOpen(true);
+  };
+
   return (
-    <Card data-testid="card-recent-events" className="rounded-xl border bg-card border-card-border shadow-sm">
+    <Card data-testid="card-recent-events" className="glass-card rounded-xl gold-glow">
       <CardHeader className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-            <CardDescription className="text-sm text-muted-foreground">
+            <CardTitle className="text-lg font-semibold luxury-text">Recent Activity</CardTitle>
+            <CardDescription className="text-sm text-sf-text-secondary">
               Latest events tracked in real-time
             </CardDescription>
           </div>
@@ -109,12 +119,13 @@ export function RecentEventsTable() {
                   <TableRow
                     key={event.id}
                     data-testid={`row-recent-event-${index}`}
-                    className="hover-elevate"
+                    className="hover-elevate cursor-pointer"
+                    onClick={() => handleRowClick(event)}
                   >
                     <TableCell>
                       <Badge
                         variant="secondary"
-                        className="font-mono text-xs bg-primary/10 text-primary hover:bg-primary/20"
+                        className="font-mono text-xs luxury-badge"
                         data-testid={`badge-event-name-${index}`}
                       >
                         {event.event}
@@ -136,6 +147,12 @@ export function RecentEventsTable() {
           </div>
         )}
       </CardContent>
+
+      <EventDetailDialog
+        event={selectedEvent}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </Card>
   );
 }

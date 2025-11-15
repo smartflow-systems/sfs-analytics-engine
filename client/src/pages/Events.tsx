@@ -33,17 +33,17 @@ export default function Events() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold" data-testid="text-page-title">Events</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="glass-card p-8 gold-glow">
+        <h1 className="text-4xl luxury-heading mb-2" data-testid="text-page-title">Events</h1>
+        <p className="text-sm text-sf-text-secondary">
           Explore and analyze all tracked events
         </p>
       </div>
 
-      <Card>
+      <Card className="glass-card gold-glow">
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
-            <CardTitle>Event Types</CardTitle>
+            <CardTitle className="luxury-text">Event Types</CardTitle>
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -75,9 +75,9 @@ export default function Events() {
             </TableHeader>
             <TableBody>
               {filteredEvents.map((event, index) => (
-                <TableRow key={event.name} data-testid={`row-event-type-${index}`}>
+                <TableRow key={event.name} data-testid={`row-event-type-${index}`} className="hover-elevate">
                   <TableCell>
-                    <Badge variant="secondary" data-testid={`badge-event-name-${index}`}>
+                    <Badge variant="secondary" className="luxury-badge" data-testid={`badge-event-name-${index}`}>
                       {event.name}
                     </Badge>
                   </TableCell>

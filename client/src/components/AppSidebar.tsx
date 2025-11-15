@@ -45,10 +45,10 @@ export function AppSidebar() {
 
   return (
     <Sidebar>
-      <SidebarHeader className="border-b p-4">
+      <SidebarHeader className="gold-border p-4">
         <div className="flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          <h2 className="text-lg font-semibold">Analytics</h2>
+          <BarChart3 className="h-6 w-6 text-primary gold-pulse" />
+          <h2 className="text-lg font-semibold luxury-heading">SFS Analytics</h2>
         </div>
       </SidebarHeader>
       <SidebarContent>

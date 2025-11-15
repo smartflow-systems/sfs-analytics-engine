@@ -2,67 +2,83 @@
 @tailwind components;
 @tailwind utilities;
 
-/* SFS DESIGN SYSTEM - LIGHT MODE */
-:root {
-  /* Base Colors */
-  --background: 0 0% 100%;
-  --foreground: 0 0% 9%;
-  --border: 0 0% 91%;
-  --card: 0 0% 98%;
-  --card-foreground: 0 0% 9%;
-  --card-border: 0 0% 94%;
+/* ========================================
+   SFS FAMILY LUXURY THEME
+   Gold & Dark Marble Aesthetic
+   ======================================== */
 
-  /* Primary Brand Color - SFS Blue */
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
+:root {
+  /* Core SFS Family Colors */
+  --sf-black: 30 15% 8%;
+  --sf-brown: 30 20% 15%;
+  --sf-brown-light: 30 18% 22%;
+  --sf-gold: 45 100% 51%;
+  --sf-gold-bright: 45 100% 58%;
+  --sf-gold-dark: 45 85% 45%;
+  --sf-gold-muted: 45 40% 45%;
+  --sf-text-primary: 45 20% 95%;
+  --sf-text-secondary: 45 15% 75%;
+  --sf-text-muted: 45 10% 55%;
+
+  /* Semantic Colors */
+  --background: var(--sf-black);
+  --foreground: var(--sf-text-primary);
+  --border: 45 25% 25%;
+  --card: var(--sf-brown-light);
+  --card-foreground: var(--sf-text-primary);
+  --card-border: 45 30% 30%;
+
+  /* Primary - Sparkling Gold */
+  --primary: var(--sf-gold);
+  --primary-foreground: 30 15% 10%;
 
   /* Secondary */
-  --secondary: 0 0% 88%;
-  --secondary-foreground: 0 0% 9%;
+  --secondary: var(--sf-brown);
+  --secondary-foreground: var(--sf-text-primary);
 
   /* Muted */
-  --muted: 0 0% 92%;
-  --muted-foreground: 0 0% 45%;
+  --muted: 30 15% 18%;
+  --muted-foreground: var(--sf-text-muted);
 
   /* Accent */
-  --accent: 220 14% 91%;
-  --accent-foreground: 0 0% 9%;
+  --accent: var(--sf-gold-muted);
+  --accent-foreground: var(--sf-text-primary);
 
   /* Destructive */
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
+  --destructive: 0 70% 50%;
+  --destructive-foreground: var(--sf-text-primary);
 
   /* Form Elements */
-  --input: 0 0% 80%;
-  --ring: 221 83% 53%;
+  --input: 45 20% 30%;
+  --ring: var(--sf-gold);
 
   /* Sidebar */
-  --sidebar: 0 0% 96%;
-  --sidebar-foreground: 0 0% 9%;
-  --sidebar-border: 0 0% 92%;
-  --sidebar-primary: 221 83% 53%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 0 0% 90%;
-  --sidebar-accent-foreground: 0 0% 9%;
-  --sidebar-ring: 221 83% 53%;
+  --sidebar: 30 18% 12%;
+  --sidebar-foreground: var(--sf-text-primary);
+  --sidebar-border: 45 25% 22%;
+  --sidebar-primary: var(--sf-gold);
+  --sidebar-primary-foreground: 30 15% 10%;
+  --sidebar-accent: 30 15% 16%;
+  --sidebar-accent-foreground: var(--sf-text-primary);
+  --sidebar-ring: var(--sf-gold);
 
   /* Popover */
-  --popover: 0 0% 96%;
-  --popover-foreground: 0 0% 9%;
-  --popover-border: 0 0% 92%;
+  --popover: var(--sf-brown-light);
+  --popover-foreground: var(--sf-text-primary);
+  --popover-border: 45 30% 28%;
 
-  /* Chart Colors */
-  --chart-1: 221 83% 45%;
-  --chart-2: 142 76% 36%;
-  --chart-3: 280 65% 47%;
-  --chart-4: 24 95% 53%;
-  --chart-5: 340 82% 52%;
+  /* Chart Colors - Gold Spectrum */
+  --chart-1: var(--sf-gold);
+  --chart-2: 35 90% 55%;
+  --chart-3: 25 85% 50%;
+  --chart-4: 50 95% 58%;
+  --chart-5: 40 80% 48%;
 
-  /* SFS Elevation System */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  /* Elevation - Gold Glow */
+  --elevate-1: rgba(255, 215, 0, 0.05);
+  --elevate-2: rgba(255, 215, 0, 0.12);
+  --button-outline: rgba(255, 215, 0, 0.15);
+  --badge-outline: rgba(255, 215, 0, 0.08);
   --opaque-button-border-intensity: -8;
 
   /* Font System */
@@ -73,125 +89,14 @@
   /* Border Radius */
   --radius: .5625rem;
 
-/* Fallback for older browsers */
+  /* Fallback for older browsers */
   --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --primary-border: hsl(var(--primary));
-  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --secondary-border: hsl(var(--secondary));
-  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --muted-border: hsl(var(--muted));
-  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --accent-border: hsl(var(--accent));
-  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
   --destructive-border: hsl(var(--destructive));
-  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-}
-
-/* SFS DESIGN SYSTEM - DARK MODE */
-.dark {
-  /* Base Colors */
-  --background: 0 0% 3.9%;
-  --foreground: 0 0% 98%;
-  --border: 0 0% 14.9%;
-  --card: 0 0% 5.5%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 0 0% 8%;
-
-  /* Primary Brand Color - SFS Blue */
-  --primary: 221 83% 53%;
-  --primary-foreground: 210 40% 98%;
-
-  /* Secondary */
-  --secondary: 0 0% 14%;
-  --secondary-foreground: 0 0% 98%;
-
-  /* Muted */
-  --muted: 0 0% 13%;
-  --muted-foreground: 0 0% 63%;
-
-  /* Accent */
-  --accent: 220 14% 16%;
-  --accent-foreground: 0 0% 98%;
-
-  /* Destructive */
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 98%;
-
-  /* Form Elements */
-  --input: 0 0% 35%;
-  --ring: 221 83% 53%;
-
-  /* Sidebar */
-  --sidebar: 0 0% 5%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-border: 0 0% 12%;
-  --sidebar-primary: 221 83% 53%;
-  --sidebar-primary-foreground: 210 40% 98%;
-  --sidebar-accent: 0 0% 10%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-ring: 221 83% 53%;
-
-  /* Popover */
-  --popover: 0 0% 6%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 0 0% 14%;
-
-  /* Chart Colors */
-  --chart-1: 221 83% 65%;
-  --chart-2: 142 76% 65%;
-  --chart-3: 280 65% 65%;
-  --chart-4: 24 95% 65%;
-  --chart-5: 340 82% 65%;
-
-  /* SFS Elevation System */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-  --opaque-button-border-intensity: 9;
-
-/* Fallback for older browsers */
-  --sidebar-primary-border: hsl(var(--sidebar-primary));
-  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --sidebar-accent-border: hsl(var(--sidebar-accent));
-  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --primary-border: hsl(var(--primary));
-  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --secondary-border: hsl(var(--secondary));
-  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --muted-border: hsl(var(--muted));
-  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --accent-border: hsl(var(--accent));
-  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
-
-  /* Fallback for older browsers */
-  --destructive-border: hsl(var(--destructive));
-  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
 @layer base {
@@ -201,79 +106,67 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    position: relative;
+  }
+
+  /* Circuit canvas background */
+  #sfs-circuit {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* Main app container above canvas */
+  #root {
+    position: relative;
+    z-index: 1;
   }
 }
 
-/**
- * Using the elevate system.
- * Automatic contrast adjustment.
- *
- * <element className="hover-elevate" />
- * <element className="active-elevate-2" />
- *
- * // Using the tailwind utility when a data attribute is "on"
- * <element className="toggle-elevate data-[state=on]:toggle-elevated" />
- * // Or manually controlling the toggle state
- * <element className="toggle-elevate toggle-elevated" />
- *
- * Elevation systems have to handle many states.
- * - not-hovered, vs. hovered vs. active  (three mutually exclusive states)
- * - toggled or not
- * - focused or not (this is not handled with these utilities)
- *
- * Even without handling focused or not, this is six possible combinations that
- * need to be distinguished from eachother visually.
- */
-@layer utilities {
+/* ========================================
+   ELEVATION UTILITIES
+   ======================================== */
 
-  /* Hide ugly search cancel button in Chrome until we can style it properly */
+@layer utilities {
+  /* Hide ugly search cancel button */
   input[type="search"]::-webkit-search-cancel-button {
     @apply hidden;
   }
 
-  /* Placeholder styling for contentEditable div */
+  /* Placeholder styling */
   [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
 
-  /* .no-default-hover-elevate/no-default-active-elevate is an escape hatch so consumers of
-   * buttons/badges can remove the automatic brightness adjustment on interactions
-   * and program their own. */
   .no-default-hover-elevate {}
-
   .no-default-active-elevate {}
 
-
-  /**
-   * Toggleable backgrounds go behind the content. Hoverable/active goes on top.
-   * This way they can stack/compound. Both will overlap the parent's borders!
-   * So borders will be automatically adjusted both on toggle, and hover/active,
-   * and they will be compounded.
-   */
+  /* Toggleable backgrounds */
   .toggle-elevate::before,
   .toggle-elevate-2::before {
     content: "";
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: -1;
-    /* sits behind content but above backdrop */
   }
 
   .toggle-elevate.toggle-elevated::before {
     background-color: var(--elevate-2);
   }
 
-  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.toggle-elevate::before {
     inset: -1px;
   }
 
-  /* Does not work on elements with overflow:hidden! */
+  /* Hover elevation */
   .hover-elevate:not(.no-default-hover-elevate),
   .active-elevate:not(.no-default-active-elevate),
   .hover-elevate-2:not(.no-default-hover-elevate),
@@ -290,10 +183,9 @@
     pointer-events: none;
     position: absolute;
     inset: 0px;
-    /*border-radius: inherit;   match rounded corners */
     border-radius: inherit;
     z-index: 999;
-    /* sits in front of content */
+    transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .hover-elevate:hover:not(.no-default-hover-elevate)::after,
@@ -306,12 +198,135 @@
     background-color: var(--elevate-2);
   }
 
-  /* If there's a 1px border, adjust the inset so that it covers that parent's border */
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after,
   .border.active-elevate:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate-2:not(.no-hover-interaction-elevate)::after,
-  .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
-  .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
+  .border.active-elevate-2:not(.no-active-interaction-elevate)::after {
     inset: -1px;
   }
+
+  /* ========================================
+     LUXURY GOLD UTILITIES
+     ======================================== */
+
+  .glass-card {
+    background: rgba(48, 38, 28, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 215, 0, 0.2);
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 215, 0, 0.4);
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.25);
+    transform: translateY(-2px);
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+  }
+
+  .gold-glow-strong {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+  }
+
+  .gold-border {
+    border: 1px solid hsl(var(--sf-gold) / 0.3);
+  }
+
+  .luxury-heading {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--sf-gold-bright)),
+      hsl(var(--sf-gold)),
+      hsl(var(--sf-gold-dark))
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+  }
+
+  .gold-gradient {
+    background: linear-gradient(
+      135deg,
+      hsl(var(--sf-gold) / 0.1) 0%,
+      transparent 50%,
+      hsl(var(--sf-gold) / 0.05) 100%
+    );
+  }
+
+  .gold-pulse {
+    animation: gold-pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes gold-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.6;
+      transform: scale(1.1);
+    }
+  }
+
+  @keyframes shine {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  .shine {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 215, 0, 0.2) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shine 3s infinite;
+  }
+}
+
+/* ========================================
+   LUXURY SCROLLBAR
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--sf-black));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--sf-gold) / 0.3);
+  border-radius: 5px;
+  border: 2px solid hsl(var(--sf-black));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--sf-gold) / 0.5);
+}
+
+/* ========================================
+   SELECTION STYLING
+   ======================================== */
+
+::selection {
+  background: hsl(var(--sf-gold) / 0.3);
+  color: hsl(var(--sf-text-primary));
+}
+
+::-moz-selection {
+  background: hsl(var(--sf-gold) / 0.3);
+  color: hsl(var(--sf-text-primary));
 }

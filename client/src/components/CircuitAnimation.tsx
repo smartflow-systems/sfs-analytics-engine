@@ -97,18 +97,18 @@ export function CircuitAnimation() {
   };
 
   return (
-    <Card className="rounded-xl border bg-card border-card-border shadow-sm">
+    <Card className="glass-card rounded-xl gold-glow">
       <CardHeader className="p-6">
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          <Zap className="h-5 w-5 text-primary" />
+        <CardTitle className="text-lg font-semibold flex items-center gap-2 luxury-text">
+          <Zap className="h-5 w-5 text-primary gold-pulse" />
           Event Flow Visualization
         </CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
+        <CardDescription className="text-sm text-sf-text-secondary">
           Watch events flow through the system in real-time
         </CardDescription>
       </CardHeader>
       <CardContent className="p-6 pt-0">
-        <div className="relative w-full h-64 bg-muted/20 rounded-lg border border-border/50 overflow-hidden">
+        <div className="relative w-full h-64 glass-panel rounded-lg gold-border overflow-hidden">
           <svg className="absolute inset-0 w-full h-full">
             {/* Draw connections */}
             {connections.map((conn, idx) => {
@@ -174,8 +174,8 @@ export function CircuitAnimation() {
               whileHover={{ scale: 1.05 }}
             >
               <div className="flex flex-col items-center">
-                <div className="w-20 h-10 bg-background border-2 border-primary/30 rounded-lg flex items-center justify-center hover-elevate group">
-                  <node.icon className="h-5 w-5 text-primary" />
+                <div className="w-20 h-10 glass-panel gold-border rounded-lg flex items-center justify-center hover-elevate-2 group gold-glow">
+                  <node.icon className="h-5 w-5 text-primary group-hover:scale-110 transition-transform" />
                 </div>
                 <span className="text-xs text-muted-foreground mt-1 font-medium">
                   {node.label}
@@ -185,15 +185,15 @@ export function CircuitAnimation() {
           ))}
 
           {/* Event counter overlay */}
-          <div className="absolute top-4 right-4 bg-background/80 backdrop-blur rounded-lg border px-3 py-2">
-            <div className="text-2xl font-bold text-primary">{eventCount}</div>
-            <div className="text-xs text-muted-foreground">events processed</div>
+          <div className="absolute top-4 right-4 glass-panel gold-border rounded-lg px-3 py-2 gold-glow">
+            <div className="text-2xl font-bold luxury-heading">{eventCount}</div>
+            <div className="text-xs text-sf-text-muted">events processed</div>
           </div>
 
           {/* Connection status */}
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-background/80 backdrop-blur rounded-lg border px-3 py-1.5">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-            <span className="text-xs text-muted-foreground">
+          <div className="absolute bottom-4 left-4 flex items-center gap-2 glass-panel gold-border rounded-lg px-3 py-1.5">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-primary gold-pulse' : 'bg-gray-500'}`} />
+            <span className="text-xs text-sf-text-secondary">
               {isConnected ? 'Streaming' : 'Disconnected'}
             </span>
           </div>

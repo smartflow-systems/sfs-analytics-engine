@@ -1,0 +1,373 @@
+/**
+ * SFS FAMILY THEME - Complete Theme System
+ * Luxurious gold and dark marble aesthetic
+ *
+ * Colors: Dark marble brown-tinted black + Sparkling gold
+ * No blue colors - pure luxury palette
+ */
+
+/* ========================================
+   CORE COLOR PALETTE
+   ======================================== */
+
+:root {
+  /* SFS Family Core Colors */
+  --sf-black: 30 15% 8%;           /* Dark marble brown-tinted black */
+  --sf-brown: 30 20% 15%;          /* Rich brown */
+  --sf-brown-light: 30 18% 22%;    /* Lighter brown for cards */
+  --sf-gold: 45 100% 51%;          /* Sparkling gold */
+  --sf-gold-bright: 45 100% 58%;   /* Brighter gold for highlights */
+  --sf-gold-dark: 45 85% 45%;      /* Darker gold for depth */
+  --sf-gold-muted: 45 40% 45%;     /* Muted gold for subtle elements */
+
+  /* Text Colors */
+  --sf-text-primary: 45 20% 95%;   /* Beige-white */
+  --sf-text-secondary: 45 15% 75%; /* Muted beige */
+  --sf-text-muted: 45 10% 55%;     /* Very muted beige */
+
+  /* Semantic Colors */
+  --background: var(--sf-black);
+  --foreground: var(--sf-text-primary);
+  --border: 45 25% 25%;            /* Gold-tinted border */
+  --card: var(--sf-brown-light);
+  --card-foreground: var(--sf-text-primary);
+  --card-border: 45 30% 30%;       /* Gold card border */
+
+  /* Primary (Gold) */
+  --primary: var(--sf-gold);
+  --primary-foreground: 30 15% 10%;
+
+  /* Secondary */
+  --secondary: var(--sf-brown);
+  --secondary-foreground: var(--sf-text-primary);
+
+  /* Muted */
+  --muted: 30 15% 18%;
+  --muted-foreground: var(--sf-text-muted);
+
+  /* Accent */
+  --accent: var(--sf-gold-muted);
+  --accent-foreground: var(--sf-text-primary);
+
+  /* Destructive */
+  --destructive: 0 70% 50%;
+  --destructive-foreground: var(--sf-text-primary);
+
+  /* Form Elements */
+  --input: 45 20% 30%;
+  --ring: var(--sf-gold);
+
+  /* Sidebar */
+  --sidebar: 30 18% 12%;
+  --sidebar-foreground: var(--sf-text-primary);
+  --sidebar-border: 45 25% 22%;
+  --sidebar-primary: var(--sf-gold);
+  --sidebar-primary-foreground: 30 15% 10%;
+  --sidebar-accent: 30 15% 16%;
+  --sidebar-accent-foreground: var(--sf-text-primary);
+  --sidebar-ring: var(--sf-gold);
+
+  /* Popover */
+  --popover: var(--sf-brown-light);
+  --popover-foreground: var(--sf-text-primary);
+  --popover-border: 45 30% 28%;
+
+  /* Chart Colors - Gold Palette */
+  --chart-1: var(--sf-gold);
+  --chart-2: 35 90% 55%;  /* Amber */
+  --chart-3: 25 85% 50%;  /* Orange-gold */
+  --chart-4: 50 95% 58%;  /* Yellow-gold */
+  --chart-5: 40 80% 48%;  /* Dark gold */
+
+  /* Elevation System - Gold Glow */
+  --elevate-1: rgba(255, 215, 0, 0.05);  /* Subtle gold glow */
+  --elevate-2: rgba(255, 215, 0, 0.12);  /* Stronger gold glow */
+  --button-outline: rgba(255, 215, 0, 0.15);
+  --badge-outline: rgba(255, 215, 0, 0.08);
+  --opaque-button-border-intensity: -8;
+
+  /* Glass Effect - Gold Tinted */
+  --glass-bg: rgba(48, 38, 28, 0.7);     /* Brown-tinted glass */
+  --glass-border: rgba(255, 215, 0, 0.2); /* Gold border */
+  --glass-glow: 0 0 20px rgba(255, 215, 0, 0.15);
+
+  /* Font System */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: JetBrains Mono, Menlo, monospace;
+
+  /* Border Radius */
+  --radius: .5625rem; /* 9px */
+}
+
+/* ========================================
+   GLASS CARD SYSTEM
+   ======================================== */
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-glow);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  border-color: hsl(var(--sf-gold) / 0.4);
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.25);
+  transform: translateY(-2px);
+}
+
+.glass-panel {
+  background: rgba(48, 38, 28, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+}
+
+/* ========================================
+   ELEVATION UTILITIES
+   ======================================== */
+
+.hover-elevate {
+  position: relative;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-elevate::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-elevate:hover::after {
+  background-color: var(--elevate-1);
+}
+
+.hover-elevate-2:hover::after {
+  background-color: var(--elevate-2);
+}
+
+.active-elevate-2:active::after {
+  background-color: var(--elevate-2);
+}
+
+/* ========================================
+   GOLD GLOW UTILITIES
+   ======================================== */
+
+.gold-glow {
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+.gold-glow-strong {
+  box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+.gold-border {
+  border: 1px solid hsl(var(--sf-gold) / 0.3);
+}
+
+.gold-border-bright {
+  border: 1px solid hsl(var(--sf-gold) / 0.5);
+}
+
+/* Gold gradient backgrounds */
+.gold-gradient {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--sf-gold) / 0.1) 0%,
+    transparent 50%,
+    hsl(var(--sf-gold) / 0.05) 100%
+  );
+}
+
+.gold-gradient-vertical {
+  background: linear-gradient(
+    to bottom,
+    hsl(var(--sf-gold) / 0.15) 0%,
+    transparent 100%
+  );
+}
+
+/* ========================================
+   LUXURY TEXT STYLES
+   ======================================== */
+
+.luxury-heading {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--sf-gold-bright)),
+    hsl(var(--sf-gold)),
+    hsl(var(--sf-gold-dark))
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.luxury-text {
+  color: hsl(var(--sf-text-primary));
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.1);
+}
+
+/* ========================================
+   ANIMATED SHINE EFFECT
+   ======================================== */
+
+@keyframes shine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+.shine {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 215, 0, 0.2) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shine 3s infinite;
+}
+
+/* ========================================
+   MARBLE TEXTURE OVERLAY
+   ======================================== */
+
+.marble-texture {
+  position: relative;
+}
+
+.marble-texture::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0px,
+      transparent 2px,
+      rgba(255, 215, 0, 0.02) 2px,
+      rgba(255, 215, 0, 0.02) 4px
+    );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ========================================
+   LUXURY SCROLLBAR
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--sf-black));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--sf-gold) / 0.3);
+  border-radius: 5px;
+  border: 2px solid hsl(var(--sf-black));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--sf-gold) / 0.5);
+}
+
+/* ========================================
+   SELECTION STYLING
+   ======================================== */
+
+::selection {
+  background: hsl(var(--sf-gold) / 0.3);
+  color: hsl(var(--sf-text-primary));
+}
+
+::-moz-selection {
+  background: hsl(var(--sf-gold) / 0.3);
+  color: hsl(var(--sf-text-primary));
+}
+
+/* ========================================
+   LUXURY BADGE STYLES
+   ======================================== */
+
+.luxury-badge {
+  background: linear-gradient(135deg, hsl(var(--sf-gold) / 0.2), hsl(var(--sf-gold) / 0.1));
+  border: 1px solid hsl(var(--sf-gold) / 0.3);
+  color: hsl(var(--sf-gold-bright));
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+/* ========================================
+   PULSING GOLD DOT
+   ======================================== */
+
+@keyframes gold-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+.gold-pulse {
+  animation: gold-pulse 2s ease-in-out infinite;
+}
+
+/* ========================================
+   LUXURY STAT CARD
+   ======================================== */
+
+.luxury-stat-card {
+  background: linear-gradient(
+    135deg,
+    rgba(48, 38, 28, 0.8) 0%,
+    rgba(48, 38, 28, 0.6) 100%
+  );
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 215, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 215, 0, 0.1),
+    transparent
+  );
+  transition: left 0.5s ease;
+}
+
+.luxury-stat-card:hover::before {
+  left: 100%;
+}
