@@ -20,6 +20,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { exportEventsAsCSV, exportEventsAsJSON, getTimestampedFilename } from "@/lib/export";
+import { EventDetailDialog } from "@/components/EventDetailDialog";
+import { useState } from "react";
 
 interface Event {
   id: string;
@@ -30,6 +32,9 @@ interface Event {
 }
 
 export function RecentEventsTable() {
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const { data, isLoading } = useQuery<{ events: Event[] }>({
     queryKey: ["/api/analytics/events"],
     refetchInterval: 10000, // Refresh every 10 seconds
@@ -47,6 +52,11 @@ export function RecentEventsTable() {
     } else {
       exportEventsAsJSON(events, filename);
     }
+  };
+
+  const handleRowClick = (event: Event) => {
+    setSelectedEvent(event);
+    setDialogOpen(true);
   };
 
   return (
@@ -109,7 +119,8 @@ export function RecentEventsTable() {
                   <TableRow
                     key={event.id}
                     data-testid={`row-recent-event-${index}`}
-                    className="hover-elevate"
+                    className="hover-elevate cursor-pointer"
+                    onClick={() => handleRowClick(event)}
                   >
                     <TableCell>
                       <Badge
@@ -136,6 +147,12 @@ export function RecentEventsTable() {
           </div>
         )}
       </CardContent>
+
+      <EventDetailDialog
+        event={selectedEvent}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+      />
     </Card>
   );
 }
