@@ -3,12 +3,19 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertEventSchema, insertWorkspaceSchema, insertFunnelSchema, insertAlertSchema } from "@shared/schema";
 import { z } from "zod";
+import AnalyticsWebSocketServer from "./websocket";
 
 // For demo purposes, we'll use a hardcoded workspace ID
 // In production, this would come from authentication/session
 const DEMO_WORKSPACE_ID = "demo-workspace-001";
 
+let wsServer: AnalyticsWebSocketServer;
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  const httpServer = createServer(app);
+
+  // Initialize WebSocket server
+  wsServer = new AnalyticsWebSocketServer(httpServer);
 
   // ==================== EVENT TRACKING ====================
 
@@ -28,6 +35,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // In production, this would queue to Redis and batch insert
       // For now, we'll insert directly to the database
       const event = await storage.createEvent(eventData);
+
+      // Broadcast event to WebSocket clients
+      if (wsServer) {
+        wsServer.broadcastEvent(eventData.workspaceId, event);
+      }
 
       res.json({ success: true, eventId: event.id });
     } catch (error) {
@@ -374,8 +386,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to seed demo data" });
     }
   });
-
-  const httpServer = createServer(app);
 
   return httpServer;
 }

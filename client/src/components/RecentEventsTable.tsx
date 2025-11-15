@@ -8,9 +8,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
+import { Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { exportEventsAsCSV, exportEventsAsJSON, getTimestampedFilename } from "@/lib/export";
 
 interface Event {
   id: string;
@@ -28,13 +37,47 @@ export function RecentEventsTable() {
 
   const events = data?.events.slice(0, 10) || [];
 
+  const handleExport = (format: 'csv' | 'json') => {
+    if (!events || events.length === 0) return;
+
+    const filename = getTimestampedFilename('events', format);
+
+    if (format === 'csv') {
+      exportEventsAsCSV(events, filename);
+    } else {
+      exportEventsAsJSON(events, filename);
+    }
+  };
+
   return (
     <Card data-testid="card-recent-events" className="rounded-xl border bg-card border-card-border shadow-sm">
       <CardHeader className="p-6">
-        <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
-        <CardDescription className="text-sm text-muted-foreground">
-          Latest events tracked in real-time
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-lg font-semibold">Recent Activity</CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              Latest events tracked in real-time
+            </CardDescription>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleExport('csv')} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Export as CSV
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('json')} className="gap-2">
+                <FileJson className="h-4 w-4" />
+                Export as JSON
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </CardHeader>
       <CardContent className="p-6 pt-0">
         {isLoading ? (

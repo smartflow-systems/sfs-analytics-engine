@@ -3,6 +3,8 @@ import { StatCard } from "@/components/StatCard";
 import { EventChart } from "@/components/EventChart";
 import { TopEventsList } from "@/components/TopEventsList";
 import { RecentEventsTable } from "@/components/RecentEventsTable";
+import { LiveActivityFeed } from "@/components/LiveActivityFeed";
+import { CircuitAnimation } from "@/components/CircuitAnimation";
 import { Activity, Users, MousePointer, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -92,6 +94,11 @@ export default function Dashboard() {
         <div>
           <TopEventsList topEvents={overview?.topEvents || []} isLoading={isLoading} />
         </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <LiveActivityFeed />
+        <CircuitAnimation />
       </div>
 
       <RecentEventsTable />
