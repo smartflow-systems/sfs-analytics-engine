@@ -1,0 +1,89 @@
+{
+  "theme": {
+    "name": "SFS Family",
+    "version": "1.0.0",
+    "description": "Luxurious gold and dark marble theme for SmartFlow Systems"
+  },
+  "colors": {
+    "black": "30 15% 8%",
+    "brown": "30 20% 15%",
+    "brownLight": "30 18% 22%",
+    "gold": "45 100% 51%",
+    "goldBright": "45 100% 58%",
+    "goldDark": "45 85% 45%",
+    "goldMuted": "45 40% 45%",
+    "textPrimary": "45 20% 95%",
+    "textSecondary": "45 15% 75%",
+    "textMuted": "45 10% 55%"
+  },
+  "spacing": {
+    "xs": "0.25rem",
+    "sm": "0.5rem",
+    "md": "1rem",
+    "lg": "1.5rem",
+    "xl": "2rem",
+    "2xl": "3rem",
+    "3xl": "4rem"
+  },
+  "borderRadius": {
+    "sm": "0.1875rem",
+    "md": "0.375rem",
+    "lg": "0.5625rem",
+    "xl": "0.75rem",
+    "2xl": "1rem",
+    "full": "9999px"
+  },
+  "typography": {
+    "fontFamily": {
+      "sans": "Inter, -apple-system, BlinkMacSystemFont, sans-serif",
+      "serif": "Georgia, serif",
+      "mono": "JetBrains Mono, Menlo, monospace"
+    },
+    "fontSize": {
+      "xs": "0.75rem",
+      "sm": "0.875rem",
+      "base": "1rem",
+      "lg": "1.125rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem",
+      "3xl": "1.875rem",
+      "4xl": "2.25rem",
+      "5xl": "3rem"
+    }
+  },
+  "effects": {
+    "glass": {
+      "blur": "12px",
+      "backgroundOpacity": 0.7,
+      "borderOpacity": 0.2
+    },
+    "glow": {
+      "subtle": "0 0 20px rgba(255, 215, 0, 0.15)",
+      "medium": "0 0 30px rgba(255, 215, 0, 0.25)",
+      "strong": "0 0 40px rgba(255, 215, 0, 0.4)"
+    },
+    "elevation": {
+      "level1": "rgba(255, 215, 0, 0.05)",
+      "level2": "rgba(255, 215, 0, 0.12)"
+    }
+  },
+  "animation": {
+    "easing": {
+      "default": "cubic-bezier(0.4, 0, 0.2, 1)",
+      "crickit": "cubic-bezier(0.34, 1.56, 0.64, 1)",
+      "smooth": "cubic-bezier(0.25, 0.46, 0.45, 0.94)"
+    },
+    "duration": {
+      "fast": "150ms",
+      "normal": "300ms",
+      "slow": "500ms"
+    }
+  },
+  "circuitFlow": {
+    "particleCount": 30,
+    "nodeCount": 20,
+    "maxConnections": 3,
+    "particleSpeed": 0.3,
+    "connectionDistance": 150
+  }
+}
