@@ -24,12 +24,34 @@ export async function apiRequest(
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
+
 export const getQueryFn: <T>(options: {
   on401: UnauthorizedBehavior;
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const parts = queryKey as (string | Record<string, string> | undefined)[];
+    const baseUrl = parts[0] as string;
+    
+    const urlParams = new URLSearchParams();
+    
+    for (let i = 1; i < parts.length; i++) {
+      const part = parts[i];
+      if (typeof part === "string") {
+        urlParams.set("range", part);
+      } else if (typeof part === "object" && part !== null) {
+        Object.entries(part).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            urlParams.set(key, String(value));
+          }
+        });
+      }
+    }
+    
+    const queryString = urlParams.toString();
+    const url = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+
+    const res = await fetch(url, {
       credentials: "include",
     });
 
@@ -47,7 +69,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 30000,
       retry: false,
     },
     mutations: {

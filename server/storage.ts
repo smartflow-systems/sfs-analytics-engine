@@ -1,328 +1,228 @@
-import { db } from "./db";
-import {
-  users,
-  workspaces,
-  events,
-  funnels,
-  alerts,
-  dailyStats,
-  type User,
-  type InsertUser,
-  type Workspace,
-  type InsertWorkspace,
-  type Event,
+import { 
+  type User, 
+  type InsertUser, 
+  type Event, 
   type InsertEvent,
-  type Funnel,
-  type InsertFunnel,
-  type Alert,
-  type InsertAlert,
+  type Report,
+  type InsertReport,
+  type AnalyticsQuery,
+  users, 
+  events,
+  reports
 } from "@shared/schema";
-import { eq, and, gte, lte, desc, sql, count, countDistinct } from "drizzle-orm";
+import { db } from "./db";
+import { eq, desc, sql, and, gte, lte, count, countDistinct } from "drizzle-orm";
 
 export interface IStorage {
-  // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-
-  // Workspace methods
-  getWorkspace(id: string): Promise<Workspace | undefined>;
-  getWorkspacesByOwnerId(ownerId: string): Promise<Workspace[]>;
-  createWorkspace(workspace: InsertWorkspace): Promise<Workspace>;
-  updateWorkspaceTier(id: string, tier: string, eventQuota: number): Promise<void>;
-
-  // Event methods
+  
   createEvent(event: InsertEvent): Promise<Event>;
-  getEventsByWorkspace(workspaceId: string, startDate: Date, endDate: Date): Promise<Event[]>;
-  getEventCount(workspaceId: string, startDate: Date, endDate: Date): Promise<number>;
-  getUniqueUserCount(workspaceId: string, startDate: Date, endDate: Date): Promise<number>;
-  getTopEvents(workspaceId: string, startDate: Date, endDate: Date, limit: number): Promise<{ event: string; count: number }[]>;
-  getEventsByType(workspaceId: string, eventName: string, startDate: Date, endDate: Date): Promise<Event[]>;
-
-  // Funnel methods
-  getFunnelsByWorkspace(workspaceId: string): Promise<Funnel[]>;
-  createFunnel(funnel: InsertFunnel): Promise<Funnel>;
-  analyzeFunnel(funnelId: string, startDate: Date, endDate: Date): Promise<any>;
-
-  // Alert methods
-  getAlertsByWorkspace(workspaceId: string): Promise<Alert[]>;
-  createAlert(alert: InsertAlert): Promise<Alert>;
-  updateAlertStatus(id: string, enabled: boolean): Promise<void>;
-
-  // Analytics methods
-  getDailyEventCounts(workspaceId: string, startDate: Date, endDate: Date): Promise<{ date: string; count: number }[]>;
-  getActiveUsersNow(workspaceId: string): Promise<number>;
-  getCohortRetention(workspaceId: string, cohortDate: Date): Promise<any>;
+  createEvents(eventsList: InsertEvent[]): Promise<Event[]>;
+  getEvents(query: AnalyticsQuery): Promise<Event[]>;
+  getEventById(id: string): Promise<Event | undefined>;
+  
+  getEventStats(startDate?: Date, endDate?: Date): Promise<{
+    totalEvents: number;
+    uniqueUsers: number;
+  }>;
+  getTopEvents(limit?: number, startDate?: Date, endDate?: Date): Promise<{
+    eventName: string;
+    count: number;
+  }[]>;
+  getEventVolume(startDate?: Date, endDate?: Date): Promise<{
+    date: string;
+    events: number;
+  }[]>;
+  getEventTypes(): Promise<{
+    name: string;
+    count: number;
+    users: number;
+    avgProps: number;
+  }[]>;
+  
+  getReports(): Promise<Report[]>;
+  getReportById(id: string): Promise<Report | undefined>;
+  createReport(report: InsertReport): Promise<Report>;
+  updateReport(id: string, report: Partial<InsertReport>): Promise<Report | undefined>;
+  deleteReport(id: string): Promise<boolean>;
 }
 
-export class DbStorage implements IStorage {
-  // User methods
+export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-    return result[0];
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
-    return result[0];
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const result = await db.insert(users).values(insertUser).returning();
-    return result[0];
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
   }
 
-  // Workspace methods
-  async getWorkspace(id: string): Promise<Workspace | undefined> {
-    const result = await db.select().from(workspaces).where(eq(workspaces.id, id)).limit(1);
-    return result[0];
-  }
-
-  async getWorkspacesByOwnerId(ownerId: string): Promise<Workspace[]> {
-    return db.select().from(workspaces).where(eq(workspaces.ownerId, ownerId));
-  }
-
-  async createWorkspace(workspace: InsertWorkspace): Promise<Workspace> {
-    const result = await db.insert(workspaces).values(workspace).returning();
-    return result[0];
-  }
-
-  async updateWorkspaceTier(id: string, tier: string, eventQuota: number): Promise<void> {
-    await db.update(workspaces)
-      .set({ tier, eventQuota, updatedAt: new Date() })
-      .where(eq(workspaces.id, id));
-  }
-
-  // Event methods
   async createEvent(event: InsertEvent): Promise<Event> {
-    const result = await db.insert(events).values(event).returning();
-    return result[0];
+    const [newEvent] = await db.insert(events).values(event).returning();
+    return newEvent;
   }
 
-  async getEventsByWorkspace(workspaceId: string, startDate: Date, endDate: Date): Promise<Event[]> {
-    return db.select().from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, startDate),
-          lte(events.timestamp, endDate)
-        )
-      )
-      .orderBy(desc(events.timestamp))
-      .limit(1000);
+  async createEvents(eventsList: InsertEvent[]): Promise<Event[]> {
+    if (eventsList.length === 0) return [];
+    const newEvents = await db.insert(events).values(eventsList).returning();
+    return newEvents;
   }
 
-  async getEventCount(workspaceId: string, startDate: Date, endDate: Date): Promise<number> {
-    const result = await db.select({ count: count() }).from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, startDate),
-          lte(events.timestamp, endDate)
-        )
-      );
-    return result[0]?.count || 0;
-  }
+  async getEvents(query: AnalyticsQuery): Promise<Event[]> {
+    const conditions = [];
+    
+    if (query.eventName) {
+      conditions.push(eq(events.eventName, query.eventName));
+    }
+    if (query.startDate) {
+      conditions.push(gte(events.timestamp, new Date(query.startDate)));
+    }
+    if (query.endDate) {
+      conditions.push(lte(events.timestamp, new Date(query.endDate)));
+    }
 
-  async getUniqueUserCount(workspaceId: string, startDate: Date, endDate: Date): Promise<number> {
-    const result = await db.select({ count: countDistinct(events.userId) }).from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, startDate),
-          lte(events.timestamp, endDate)
-        )
-      );
-    return result[0]?.count || 0;
-  }
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  async getTopEvents(workspaceId: string, startDate: Date, endDate: Date, limit: number): Promise<{ event: string; count: number }[]> {
-    const result = await db.select({
-      event: events.event,
-      count: count()
-    })
+    return db.select()
       .from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, startDate),
-          lte(events.timestamp, endDate)
-        )
-      )
-      .groupBy(events.event)
-      .orderBy(desc(count()))
-      .limit(limit);
-
-    return result.map(r => ({ event: r.event, count: Number(r.count) }));
-  }
-
-  async getEventsByType(workspaceId: string, eventName: string, startDate: Date, endDate: Date): Promise<Event[]> {
-    return db.select().from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          eq(events.event, eventName),
-          gte(events.timestamp, startDate),
-          lte(events.timestamp, endDate)
-        )
-      )
+      .where(whereClause)
       .orderBy(desc(events.timestamp))
-      .limit(1000);
+      .limit(query.limit)
+      .offset(query.offset);
   }
 
-  // Funnel methods
-  async getFunnelsByWorkspace(workspaceId: string): Promise<Funnel[]> {
-    return db.select().from(funnels).where(eq(funnels.workspaceId, workspaceId));
+  async getEventById(id: string): Promise<Event | undefined> {
+    const [event] = await db.select().from(events).where(eq(events.id, id));
+    return event;
   }
 
-  async createFunnel(funnel: InsertFunnel): Promise<Funnel> {
-    const result = await db.insert(funnels).values(funnel).returning();
-    return result[0];
-  }
+  async getEventStats(startDate?: Date, endDate?: Date): Promise<{
+    totalEvents: number;
+    uniqueUsers: number;
+  }> {
+    const conditions = [];
+    if (startDate) conditions.push(gte(events.timestamp, startDate));
+    if (endDate) conditions.push(lte(events.timestamp, endDate));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  async analyzeFunnel(funnelId: string, startDate: Date, endDate: Date): Promise<any> {
-    // Get funnel definition
-    const funnel = await db.select().from(funnels).where(eq(funnels.id, funnelId)).limit(1);
-    if (!funnel[0]) return null;
-
-    const steps = funnel[0].steps as string[];
-    const workspaceId = funnel[0].workspaceId;
-
-    // For each step, count unique users who completed it
-    const stepCounts = await Promise.all(
-      steps.map(async (step) => {
-        const result = await db.select({ count: countDistinct(events.userId) })
-          .from(events)
-          .where(
-            and(
-              eq(events.workspaceId, workspaceId),
-              eq(events.event, step),
-              gte(events.timestamp, startDate),
-              lte(events.timestamp, endDate)
-            )
-          );
-        return { step, count: result[0]?.count || 0 };
-      })
-    );
+    const [result] = await db.select({
+      totalEvents: count(),
+      uniqueUsers: countDistinct(events.userId),
+    }).from(events).where(whereClause);
 
     return {
-      funnel: funnel[0],
-      steps: stepCounts,
-      conversionRate: stepCounts.length > 0
-        ? ((stepCounts[stepCounts.length - 1].count / stepCounts[0].count) * 100).toFixed(2)
-        : 0
+      totalEvents: result?.totalEvents || 0,
+      uniqueUsers: result?.uniqueUsers || 0,
     };
   }
 
-  // Alert methods
-  async getAlertsByWorkspace(workspaceId: string): Promise<Alert[]> {
-    return db.select().from(alerts).where(eq(alerts.workspaceId, workspaceId));
-  }
+  async getTopEvents(limit = 10, startDate?: Date, endDate?: Date): Promise<{
+    eventName: string;
+    count: number;
+  }[]> {
+    const conditions = [];
+    if (startDate) conditions.push(gte(events.timestamp, startDate));
+    if (endDate) conditions.push(lte(events.timestamp, endDate));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  async createAlert(alert: InsertAlert): Promise<Alert> {
-    const result = await db.insert(alerts).values(alert).returning();
-    return result[0];
-  }
-
-  async updateAlertStatus(id: string, enabled: boolean): Promise<void> {
-    await db.update(alerts)
-      .set({ enabled: enabled ? 1 : 0 })
-      .where(eq(alerts.id, id));
-  }
-
-  // Analytics methods
-  async getDailyEventCounts(workspaceId: string, startDate: Date, endDate: Date): Promise<{ date: string; count: number }[]> {
     const result = await db.select({
-      date: sql`DATE(${events.timestamp})`,
-      count: count()
+      eventName: events.eventName,
+      count: count(),
     })
       .from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, startDate),
-          lte(events.timestamp, endDate)
-        )
-      )
+      .where(whereClause)
+      .groupBy(events.eventName)
+      .orderBy(desc(count()))
+      .limit(limit);
+
+    return result.map(r => ({
+      eventName: r.eventName,
+      count: r.count,
+    }));
+  }
+
+  async getEventVolume(startDate?: Date, endDate?: Date): Promise<{
+    date: string;
+    events: number;
+  }[]> {
+    const conditions = [];
+    if (startDate) conditions.push(gte(events.timestamp, startDate));
+    if (endDate) conditions.push(lte(events.timestamp, endDate));
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const result = await db.select({
+      date: sql<string>`DATE(${events.timestamp})`,
+      events: count(),
+    })
+      .from(events)
+      .where(whereClause)
       .groupBy(sql`DATE(${events.timestamp})`)
       .orderBy(sql`DATE(${events.timestamp})`);
 
     return result.map(r => ({
-      date: String(r.date),
-      count: Number(r.count)
+      date: r.date,
+      events: r.events,
     }));
   }
 
-  async getActiveUsersNow(workspaceId: string): Promise<number> {
-    // Users active in the last 5 minutes
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const result = await db.select({ count: countDistinct(events.userId) })
+  async getEventTypes(): Promise<{
+    name: string;
+    count: number;
+    users: number;
+    avgProps: number;
+  }[]> {
+    const result = await db.select({
+      name: events.eventName,
+      count: count(),
+      users: countDistinct(events.userId),
+      avgProps: sql<number>`AVG(COALESCE((SELECT count(*) FROM jsonb_object_keys(${events.properties}::jsonb)), 0))`,
+    })
       .from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, fiveMinutesAgo)
-        )
-      );
-    return result[0]?.count || 0;
+      .groupBy(events.eventName)
+      .orderBy(desc(count()));
+
+    return result.map(r => ({
+      name: r.name,
+      count: r.count,
+      users: r.users,
+      avgProps: Math.round(r.avgProps || 0),
+    }));
   }
 
-  async getCohortRetention(workspaceId: string, cohortDate: Date): Promise<any> {
-    // This is a simplified cohort retention calculation
-    // In production, you'd want more sophisticated cohort analysis
-    const endOfCohortDay = new Date(cohortDate);
-    endOfCohortDay.setDate(endOfCohortDay.getDate() + 1);
+  async getReports(): Promise<Report[]> {
+    return db.select().from(reports).orderBy(desc(reports.updatedAt));
+  }
 
-    // Get users who were active on cohort day
-    const cohortUsers = await db.selectDistinct({ userId: events.userId })
-      .from(events)
-      .where(
-        and(
-          eq(events.workspaceId, workspaceId),
-          gte(events.timestamp, cohortDate),
-          lte(events.timestamp, endOfCohortDay)
-        )
-      );
+  async getReportById(id: string): Promise<Report | undefined> {
+    const [report] = await db.select().from(reports).where(eq(reports.id, id));
+    return report;
+  }
 
-    const cohortSize = cohortUsers.length;
+  async createReport(report: InsertReport): Promise<Report> {
+    const [newReport] = await db.insert(reports).values(report).returning();
+    return newReport;
+  }
 
-    // Calculate retention for days 7, 30, 90
-    const retentionPeriods = [7, 30, 90];
-    const retention = await Promise.all(
-      retentionPeriods.map(async (days) => {
-        const periodStart = new Date(cohortDate);
-        periodStart.setDate(periodStart.getDate() + days);
-        const periodEnd = new Date(periodStart);
-        periodEnd.setDate(periodEnd.getDate() + 1);
+  async updateReport(id: string, report: Partial<InsertReport>): Promise<Report | undefined> {
+    const [updated] = await db.update(reports)
+      .set({ ...report, updatedAt: new Date() })
+      .where(eq(reports.id, id))
+      .returning();
+    return updated;
+  }
 
-        const activeUsers = await db.selectDistinct({ userId: events.userId })
-          .from(events)
-          .where(
-            and(
-              eq(events.workspaceId, workspaceId),
-              gte(events.timestamp, periodStart),
-              lte(events.timestamp, periodEnd)
-            )
-          );
-
-        const activeCount = activeUsers.filter(au =>
-          cohortUsers.some(cu => cu.userId === au.userId)
-        ).length;
-
-        return {
-          day: days,
-          retained: activeCount,
-          retentionRate: cohortSize > 0 ? ((activeCount / cohortSize) * 100).toFixed(2) : 0
-        };
-      })
-    );
-
-    return {
-      cohortDate,
-      cohortSize,
-      retention
-    };
+  async deleteReport(id: string): Promise<boolean> {
+    const result = await db.delete(reports).where(eq(reports.id, id)).returning();
+    return result.length > 0;
   }
 }
 
-export const storage = new DbStorage();
+export const storage = new DatabaseStorage();

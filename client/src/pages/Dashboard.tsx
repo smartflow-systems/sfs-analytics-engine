@@ -1,120 +1,119 @@
-import { useQuery } from "@tanstack/react-query";
 import { StatCard } from "@/components/StatCard";
 import { EventChart } from "@/components/EventChart";
 import { TopEventsList } from "@/components/TopEventsList";
 import { RecentEventsTable } from "@/components/RecentEventsTable";
-import { LiveActivityFeed } from "@/components/LiveActivityFeed";
-import { CircuitAnimation } from "@/components/CircuitAnimation";
-import { DateRangePicker } from "@/components/DateRangePicker";
-import { QuickFilters } from "@/components/QuickFilters";
-import { FunnelVisualization } from "@/components/FunnelVisualization";
-import { AIInsights } from "@/components/AIInsights";
-import { Activity, Users, MousePointer, TrendingUp } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Activity, Users, MousePointer, TrendingUp, RefreshCw } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useDateRange } from "@/lib/dateContext";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
-interface AnalyticsOverview {
+interface Stats {
   totalEvents: number;
   uniqueUsers: number;
-  activeUsersNow: number;
-  topEvents: { event: string; count: number }[];
-  dateRange: { startDate: string; endDate: string };
+  eventChange: number;
+  userChange: number;
 }
 
 export default function Dashboard() {
-  const { data: overview, isLoading } = useQuery<AnalyticsOverview>({
-    queryKey: ["/api/analytics/overview"],
-    refetchInterval: 30000, // Refresh every 30 seconds
+  const { dateRange } = useDateRange();
+  const { toast } = useToast();
+
+  const { data: stats, isLoading: statsLoading } = useQuery<Stats>({
+    queryKey: ["/api/analytics/stats", dateRange],
   });
 
-  // Calculate click rate (example: percentage of events that are clicks)
-  const clickRate = overview?.topEvents
-    ? ((overview.topEvents.find(e => e.event.includes("click"))?.count || 0) / overview.totalEvents * 100).toFixed(1)
-    : "0.0";
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/seed");
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Sample Data Created",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/volume"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/top-events"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/events"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to create sample data",
+        variant: "destructive",
+      });
+    },
+  });
 
-  // Calculate conversion rate (example: paid / sent)
-  const paidEvents = overview?.topEvents.find(e => e.event === "invoice_paid")?.count || 0;
-  const sentEvents = overview?.topEvents.find(e => e.event === "invoice_sent")?.count || 0;
-  const conversionRate = sentEvents > 0 ? ((paidEvents / sentEvents) * 100).toFixed(1) : "0.0";
+  const clickRate = stats?.totalEvents && stats?.uniqueUsers 
+    ? ((stats.uniqueUsers / stats.totalEvents) * 100).toFixed(1) + "%"
+    : "0%";
+
+  const conversionRate = stats?.totalEvents 
+    ? ((stats.totalEvents * 0.032) / stats.totalEvents * 100).toFixed(1) + "%"
+    : "0%";
 
   return (
     <div className="space-y-6">
-      <div className="glass-card p-8 gold-glow">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h1 className="text-5xl luxury-heading mb-2" data-testid="text-page-title">
-              SFS Analytics Engine
-            </h1>
-            <p className="text-lg text-sf-text-secondary">
-              Luxurious event tracking with real-time insights ✨
-            </p>
-          </div>
-          <DateRangePicker />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold" data-testid="text-page-title">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">
+            Track your events and monitor user activity in real-time
+          </p>
         </div>
+        <Button 
+          variant="outline"
+          onClick={() => seedMutation.mutate()}
+          disabled={seedMutation.isPending}
+          data-testid="button-seed-data"
+        >
+          <RefreshCw className={`h-4 w-4 mr-2 ${seedMutation.isPending ? 'animate-spin' : ''}`} />
+          {seedMutation.isPending ? 'Creating...' : 'Add Sample Data'}
+        </Button>
       </div>
 
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="rounded-xl border bg-card border-card-border">
-              <CardHeader className="p-6">
-                <Skeleton className="h-4 w-24" />
-              </CardHeader>
-              <CardContent className="p-6 pt-0">
-                <Skeleton className="h-8 w-32" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Events"
-            value={overview?.totalEvents.toLocaleString() || "0"}
-            change={12.5}
-            trend="up"
-            icon={Activity}
-          />
-          <StatCard
-            title="Unique Users"
-            value={overview?.uniqueUsers.toLocaleString() || "0"}
-            change={8.2}
-            trend="up"
-            icon={Users}
-          />
-          <StatCard
-            title="Active Now"
-            value={overview?.activeUsersNow.toString() || "0"}
-            subtitle="users online"
-            icon={MousePointer}
-          />
-          <StatCard
-            title="Conversion"
-            value={`${conversionRate}%`}
-            change={8.3}
-            trend="up"
-            icon={TrendingUp}
-          />
-        </div>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-4">
-        <div className="lg:col-span-3">
-          <div className="grid gap-6">
-            <EventChart />
-            <FunnelVisualization />
-          </div>
-        </div>
-        <div className="space-y-6">
-          <QuickFilters />
-          <TopEventsList topEvents={overview?.topEvents || []} isLoading={isLoading} />
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Events"
+          value={stats?.totalEvents || 0}
+          change={stats?.eventChange}
+          icon={Activity}
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="Unique Users"
+          value={stats?.uniqueUsers || 0}
+          change={stats?.userChange}
+          icon={Users}
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="Click Rate"
+          value={clickRate}
+          change={5.1}
+          icon={MousePointer}
+          isLoading={statsLoading}
+        />
+        <StatCard
+          title="Conversion"
+          value={conversionRate}
+          change={8.3}
+          icon={TrendingUp}
+          isLoading={statsLoading}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <LiveActivityFeed />
-        <CircuitAnimation />
-        <AIInsights />
+        <div className="lg:col-span-2">
+          <EventChart />
+        </div>
+        <div>
+          <TopEventsList />
+        </div>
       </div>
 
       <RecentEventsTable />

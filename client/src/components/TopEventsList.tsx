@@ -1,61 +1,67 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { useDateRange } from "@/lib/dateContext";
 
-interface TopEventsListProps {
-  topEvents: { event: string; count: number }[];
-  isLoading?: boolean;
+interface TopEvent {
+  eventName: string;
+  count: number;
+  change: number;
 }
 
-export function TopEventsList({ topEvents, isLoading }: TopEventsListProps) {
+export function TopEventsList() {
+  const { dateRange } = useDateRange();
+
+  const { data, isLoading } = useQuery<TopEvent[]>({
+    queryKey: ["/api/analytics/top-events", dateRange],
+  });
+
   return (
-    <Card data-testid="card-top-events" className="glass-card rounded-xl gold-glow">
-      <CardHeader className="p-6">
-        <CardTitle className="text-lg font-semibold luxury-text">Top Events</CardTitle>
-        <CardDescription className="text-sm text-sf-text-secondary">
-          Most frequently tracked events
-        </CardDescription>
+    <Card data-testid="card-top-events">
+      <CardHeader>
+        <CardTitle>Top Events</CardTitle>
       </CardHeader>
-      <CardContent className="p-6 pt-0">
+      <CardContent>
         {isLoading ? (
           <div className="space-y-4">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center justify-between">
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
+                <div className="flex-1">
+                  <Skeleton className="h-4 w-24 mb-1" />
+                  <Skeleton className="h-3 w-16" />
                 </div>
-                <Skeleton className="h-6 w-12" />
+                <Skeleton className="h-5 w-12" />
               </div>
             ))}
           </div>
-        ) : topEvents.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <p className="text-sm">No events tracked yet</p>
-            <p className="text-xs mt-1">Start tracking events to see them here</p>
+        ) : !data || data.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-8">
+            No events tracked yet.
           </div>
         ) : (
           <div className="space-y-4">
-            {topEvents.map((event, index) => (
+            {data.map((event, index) => (
               <div
-                key={event.event}
-                className="flex items-center justify-between hover-elevate-2 rounded-md p-3 -mx-2 gold-border group transition-all"
+                key={event.eventName}
+                className="flex items-center justify-between"
                 data-testid={`row-event-${index}`}
               >
                 <div className="flex-1">
-                  <p className="font-mono text-sm font-medium luxury-text group-hover:text-primary transition-colors" data-testid={`text-event-name-${index}`}>
-                    {event.event}
+                  <p className="font-mono text-sm font-medium" data-testid={`text-event-name-${index}`}>
+                    {event.eventName}
                   </p>
-                  <p className="text-xs text-sf-text-muted" data-testid={`text-event-count-${index}`}>
+                  <p className="text-xs text-muted-foreground" data-testid={`text-event-count-${index}`}>
                     {event.count.toLocaleString()} events
                   </p>
                 </div>
                 <Badge
-                  variant="secondary"
-                  className="ml-2 luxury-badge"
-                  data-testid={`badge-event-count-${index}`}
+                  variant={event.change >= 0 ? "secondary" : "outline"}
+                  className="ml-2"
+                  data-testid={`badge-event-change-${index}`}
                 >
-                  {event.count}
+                  {event.change >= 0 ? "+" : ""}
+                  {event.change}%
                 </Badge>
               </div>
             ))}

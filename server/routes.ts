@@ -1,391 +1,352 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertEventSchema, insertWorkspaceSchema, insertFunnelSchema, insertAlertSchema } from "@shared/schema";
+import { 
+  insertEventSchema, 
+  batchInsertEventSchema, 
+  analyticsQuerySchema,
+  insertReportSchema 
+} from "@shared/schema";
 import { z } from "zod";
-import AnalyticsWebSocketServer from "./websocket";
 
-// For demo purposes, we'll use a hardcoded workspace ID
-// In production, this would come from authentication/session
-const DEMO_WORKSPACE_ID = "demo-workspace-001";
+const metricsCache = new Map<string, { data: unknown; timestamp: number }>();
+const CACHE_TTL = 30000; 
 
-let wsServer: AnalyticsWebSocketServer;
+function getCached<T>(key: string): T | null {
+  const cached = metricsCache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data as T;
+  }
+  return null;
+}
+
+function setCache(key: string, data: unknown): void {
+  metricsCache.set(key, { data, timestamp: Date.now() });
+}
+
+function getDateRange(range: string): { startDate: Date; endDate: Date } {
+  const endDate = new Date();
+  const startDate = new Date();
+  
+  switch (range) {
+    case "today":
+      startDate.setHours(0, 0, 0, 0);
+      break;
+    case "7d":
+      startDate.setDate(startDate.getDate() - 7);
+      break;
+    case "30d":
+      startDate.setDate(startDate.getDate() - 30);
+      break;
+    case "90d":
+      startDate.setDate(startDate.getDate() - 90);
+      break;
+    default:
+      startDate.setDate(startDate.getDate() - 7);
+  }
+  
+  return { startDate, endDate };
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  const httpServer = createServer(app);
-
-  // Initialize WebSocket server
-  wsServer = new AnalyticsWebSocketServer(httpServer);
-
-  // ==================== EVENT TRACKING ====================
-
-  /**
-   * POST /api/track
-   * High-throughput event ingestion endpoint
-   * Body: { workspaceId, userId, event, properties, timestamp, sessionId }
-   */
-  app.post("/api/track", async (req: Request, res: Response) => {
+  app.post("/api/events", async (req, res) => {
     try {
-      const eventData = insertEventSchema.parse({
-        ...req.body,
-        ipAddress: req.ip,
-        userAgent: req.get("user-agent"),
-      });
-
-      // In production, this would queue to Redis and batch insert
-      // For now, we'll insert directly to the database
-      const event = await storage.createEvent(eventData);
-
-      // Broadcast event to WebSocket clients
-      if (wsServer) {
-        wsServer.broadcastEvent(eventData.workspaceId, event);
-      }
-
-      res.json({ success: true, eventId: event.id });
+      const event = insertEventSchema.parse(req.body);
+      const newEvent = await storage.createEvent(event);
+      metricsCache.clear();
+      res.status(201).json(newEvent);
     } catch (error) {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid event data", details: error.errors });
       } else {
-        console.error("Event tracking error:", error);
-        res.status(500).json({ error: "Failed to track event" });
+        console.error("Error creating event:", error);
+        res.status(500).json({ error: "Failed to create event" });
       }
     }
   });
 
-  // ==================== ANALYTICS ENDPOINTS ====================
-
-  /**
-   * GET /api/analytics/overview
-   * Get high-level analytics overview
-   * Query: workspaceId, startDate, endDate
-   */
-  app.get("/api/analytics/overview", async (req: Request, res: Response) => {
+  app.post("/api/events/batch", async (req, res) => {
     try {
-      const workspaceId = (req.query.workspaceId as string) || DEMO_WORKSPACE_ID;
-      const startDate = req.query.startDate
-        ? new Date(req.query.startDate as string)
-        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
-      const endDate = req.query.endDate
-        ? new Date(req.query.endDate as string)
-        : new Date();
-
-      const [totalEvents, uniqueUsers, activeNow, topEvents] = await Promise.all([
-        storage.getEventCount(workspaceId, startDate, endDate),
-        storage.getUniqueUserCount(workspaceId, startDate, endDate),
-        storage.getActiveUsersNow(workspaceId),
-        storage.getTopEvents(workspaceId, startDate, endDate, 10),
-      ]);
-
-      res.json({
-        totalEvents,
-        uniqueUsers,
-        activeUsersNow: activeNow,
-        topEvents,
-        dateRange: { startDate, endDate },
-      });
-    } catch (error) {
-      console.error("Analytics overview error:", error);
-      res.status(500).json({ error: "Failed to fetch analytics overview" });
-    }
-  });
-
-  /**
-   * GET /api/analytics/events
-   * Get event list with filtering
-   * Query: workspaceId, startDate, endDate, eventType
-   */
-  app.get("/api/analytics/events", async (req: Request, res: Response) => {
-    try {
-      const workspaceId = (req.query.workspaceId as string) || DEMO_WORKSPACE_ID;
-      const startDate = req.query.startDate
-        ? new Date(req.query.startDate as string)
-        : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-      const endDate = req.query.endDate
-        ? new Date(req.query.endDate as string)
-        : new Date();
-      const eventType = req.query.eventType as string | undefined;
-
-      const events = eventType
-        ? await storage.getEventsByType(workspaceId, eventType, startDate, endDate)
-        : await storage.getEventsByWorkspace(workspaceId, startDate, endDate);
-
-      res.json({ events, count: events.length });
-    } catch (error) {
-      console.error("Events fetch error:", error);
-      res.status(500).json({ error: "Failed to fetch events" });
-    }
-  });
-
-  /**
-   * GET /api/analytics/daily
-   * Get daily event counts for charts
-   * Query: workspaceId, startDate, endDate
-   */
-  app.get("/api/analytics/daily", async (req: Request, res: Response) => {
-    try {
-      const workspaceId = (req.query.workspaceId as string) || DEMO_WORKSPACE_ID;
-      const startDate = req.query.startDate
-        ? new Date(req.query.startDate as string)
-        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const endDate = req.query.endDate
-        ? new Date(req.query.endDate as string)
-        : new Date();
-
-      const dailyCounts = await storage.getDailyEventCounts(workspaceId, startDate, endDate);
-
-      res.json({ data: dailyCounts });
-    } catch (error) {
-      console.error("Daily analytics error:", error);
-      res.status(500).json({ error: "Failed to fetch daily analytics" });
-    }
-  });
-
-  /**
-   * GET /api/analytics/retention
-   * Get cohort retention analysis
-   * Query: workspaceId, cohortDate
-   */
-  app.get("/api/analytics/retention", async (req: Request, res: Response) => {
-    try {
-      const workspaceId = (req.query.workspaceId as string) || DEMO_WORKSPACE_ID;
-      const cohortDate = req.query.cohortDate
-        ? new Date(req.query.cohortDate as string)
-        : new Date(Date.now() - 90 * 24 * 60 * 60 * 1000); // 90 days ago
-
-      const retention = await storage.getCohortRetention(workspaceId, cohortDate);
-
-      res.json(retention);
-    } catch (error) {
-      console.error("Retention analysis error:", error);
-      res.status(500).json({ error: "Failed to fetch retention data" });
-    }
-  });
-
-  // ==================== FUNNEL ENDPOINTS ====================
-
-  /**
-   * GET /api/funnels
-   * Get all funnels for a workspace
-   */
-  app.get("/api/funnels", async (req: Request, res: Response) => {
-    try {
-      const workspaceId = (req.query.workspaceId as string) || DEMO_WORKSPACE_ID;
-      const funnels = await storage.getFunnelsByWorkspace(workspaceId);
-
-      res.json({ funnels });
-    } catch (error) {
-      console.error("Funnels fetch error:", error);
-      res.status(500).json({ error: "Failed to fetch funnels" });
-    }
-  });
-
-  /**
-   * POST /api/funnels
-   * Create a new funnel
-   */
-  app.post("/api/funnels", async (req: Request, res: Response) => {
-    try {
-      const funnelData = insertFunnelSchema.parse({
-        ...req.body,
-        workspaceId: req.body.workspaceId || DEMO_WORKSPACE_ID,
-      });
-
-      const funnel = await storage.createFunnel(funnelData);
-
-      res.json({ success: true, funnel });
+      const { events: eventsList } = batchInsertEventSchema.parse(req.body);
+      const newEvents = await storage.createEvents(eventsList);
+      metricsCache.clear();
+      res.status(201).json({ inserted: newEvents.length, events: newEvents });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid funnel data", details: error.errors });
+        res.status(400).json({ error: "Invalid batch data", details: error.errors });
       } else {
-        console.error("Funnel creation error:", error);
-        res.status(500).json({ error: "Failed to create funnel" });
+        console.error("Error creating batch events:", error);
+        res.status(500).json({ error: "Failed to create events" });
       }
     }
   });
 
-  /**
-   * GET /api/funnels/:id/analyze
-   * Analyze funnel conversion
-   */
-  app.get("/api/funnels/:id/analyze", async (req: Request, res: Response) => {
+  app.get("/api/events", async (req, res) => {
     try {
-      const funnelId = req.params.id;
-      const startDate = req.query.startDate
-        ? new Date(req.query.startDate as string)
-        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const endDate = req.query.endDate
-        ? new Date(req.query.endDate as string)
-        : new Date();
+      const query = analyticsQuerySchema.parse({
+        eventName: req.query.eventName,
+        startDate: req.query.startDate,
+        endDate: req.query.endDate,
+        limit: req.query.limit ? Number(req.query.limit) : 100,
+        offset: req.query.offset ? Number(req.query.offset) : 0,
+      });
+      const eventsList = await storage.getEvents(query);
+      res.json(eventsList);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid query parameters", details: error.errors });
+      } else {
+        console.error("Error fetching events:", error);
+        res.status(500).json({ error: "Failed to fetch events" });
+      }
+    }
+  });
 
-      const analysis = await storage.analyzeFunnel(funnelId, startDate, endDate);
+  app.get("/api/events/:id", async (req, res) => {
+    try {
+      const event = await storage.getEventById(req.params.id);
+      if (!event) {
+        res.status(404).json({ error: "Event not found" });
+        return;
+      }
+      res.json(event);
+    } catch (error) {
+      console.error("Error fetching event:", error);
+      res.status(500).json({ error: "Failed to fetch event" });
+    }
+  });
 
-      if (!analysis) {
-        res.status(404).json({ error: "Funnel not found" });
+  app.get("/api/analytics/stats", async (req, res) => {
+    try {
+      const range = (req.query.range as string) || "7d";
+      const cacheKey = `stats_${range}`;
+      
+      const cached = getCached<{ totalEvents: number; uniqueUsers: number }>(cacheKey);
+      if (cached) {
+        res.json(cached);
         return;
       }
 
-      res.json(analysis);
+      const { startDate, endDate } = getDateRange(range);
+      const stats = await storage.getEventStats(startDate, endDate);
+      
+      const prevEndDate = new Date(startDate);
+      const prevStartDate = new Date(startDate);
+      prevStartDate.setTime(prevStartDate.getTime() - (endDate.getTime() - startDate.getTime()));
+      
+      const prevStats = await storage.getEventStats(prevStartDate, prevEndDate);
+      
+      const eventChange = prevStats.totalEvents > 0 
+        ? ((stats.totalEvents - prevStats.totalEvents) / prevStats.totalEvents) * 100 
+        : 0;
+      const userChange = prevStats.uniqueUsers > 0 
+        ? ((stats.uniqueUsers - prevStats.uniqueUsers) / prevStats.uniqueUsers) * 100 
+        : 0;
+
+      const result = {
+        totalEvents: stats.totalEvents,
+        uniqueUsers: stats.uniqueUsers,
+        eventChange: Math.round(eventChange * 10) / 10,
+        userChange: Math.round(userChange * 10) / 10,
+      };
+      
+      setCache(cacheKey, result);
+      res.json(result);
     } catch (error) {
-      console.error("Funnel analysis error:", error);
-      res.status(500).json({ error: "Failed to analyze funnel" });
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ error: "Failed to fetch stats" });
     }
   });
 
-  // ==================== ALERT ENDPOINTS ====================
-
-  /**
-   * GET /api/alerts
-   * Get all alerts for a workspace
-   */
-  app.get("/api/alerts", async (req: Request, res: Response) => {
+  app.get("/api/analytics/top-events", async (req, res) => {
     try {
-      const workspaceId = (req.query.workspaceId as string) || DEMO_WORKSPACE_ID;
-      const alerts = await storage.getAlertsByWorkspace(workspaceId);
+      const range = (req.query.range as string) || "7d";
+      const limit = Number(req.query.limit) || 10;
+      const cacheKey = `top_events_${range}_${limit}`;
+      
+      const cached = getCached<{ eventName: string; count: number }[]>(cacheKey);
+      if (cached) {
+        res.json(cached);
+        return;
+      }
 
-      res.json({ alerts });
-    } catch (error) {
-      console.error("Alerts fetch error:", error);
-      res.status(500).json({ error: "Failed to fetch alerts" });
-    }
-  });
-
-  /**
-   * POST /api/alerts
-   * Create a new alert
-   */
-  app.post("/api/alerts", async (req: Request, res: Response) => {
-    try {
-      const alertData = insertAlertSchema.parse({
-        ...req.body,
-        workspaceId: req.body.workspaceId || DEMO_WORKSPACE_ID,
+      const { startDate, endDate } = getDateRange(range);
+      const topEvents = await storage.getTopEvents(limit, startDate, endDate);
+      
+      const prevEndDate = new Date(startDate);
+      const prevStartDate = new Date(startDate);
+      prevStartDate.setTime(prevStartDate.getTime() - (endDate.getTime() - startDate.getTime()));
+      const prevTopEvents = await storage.getTopEvents(limit, prevStartDate, prevEndDate);
+      
+      const prevCountMap = new Map(prevTopEvents.map(e => [e.eventName, e.count]));
+      
+      const result = topEvents.map(event => {
+        const prevCount = prevCountMap.get(event.eventName) || 0;
+        const change = prevCount > 0 
+          ? ((event.count - prevCount) / prevCount) * 100 
+          : (event.count > 0 ? 100 : 0);
+        return {
+          ...event,
+          change: Math.round(change),
+        };
       });
-
-      const alert = await storage.createAlert(alertData);
-
-      res.json({ success: true, alert });
+      
+      setCache(cacheKey, result);
+      res.json(result);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid alert data", details: error.errors });
-      } else {
-        console.error("Alert creation error:", error);
-        res.status(500).json({ error: "Failed to create alert" });
-      }
+      console.error("Error fetching top events:", error);
+      res.status(500).json({ error: "Failed to fetch top events" });
     }
   });
 
-  /**
-   * PATCH /api/alerts/:id
-   * Update alert status
-   */
-  app.patch("/api/alerts/:id", async (req: Request, res: Response) => {
+  app.get("/api/analytics/volume", async (req, res) => {
     try {
-      const alertId = req.params.id;
-      const { enabled } = req.body;
-
-      if (typeof enabled !== "boolean") {
-        res.status(400).json({ error: "enabled must be a boolean" });
+      const range = (req.query.range as string) || "7d";
+      const cacheKey = `volume_${range}`;
+      
+      const cached = getCached<{ date: string; events: number }[]>(cacheKey);
+      if (cached) {
+        res.json(cached);
         return;
       }
 
-      await storage.updateAlertStatus(alertId, enabled);
-
-      res.json({ success: true });
+      const { startDate, endDate } = getDateRange(range);
+      const volume = await storage.getEventVolume(startDate, endDate);
+      
+      setCache(cacheKey, volume);
+      res.json(volume);
     } catch (error) {
-      console.error("Alert update error:", error);
-      res.status(500).json({ error: "Failed to update alert" });
+      console.error("Error fetching event volume:", error);
+      res.status(500).json({ error: "Failed to fetch event volume" });
     }
   });
 
-  // ==================== WORKSPACE ENDPOINTS ====================
-
-  /**
-   * POST /api/workspaces
-   * Create a new workspace
-   */
-  app.post("/api/workspaces", async (req: Request, res: Response) => {
+  app.get("/api/analytics/event-types", async (req, res) => {
     try {
-      const workspaceData = insertWorkspaceSchema.parse(req.body);
-      const workspace = await storage.createWorkspace(workspaceData);
-
-      res.json({ success: true, workspace });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid workspace data", details: error.errors });
-      } else {
-        console.error("Workspace creation error:", error);
-        res.status(500).json({ error: "Failed to create workspace" });
-      }
-    }
-  });
-
-  /**
-   * GET /api/workspaces/:id
-   * Get workspace details
-   */
-  app.get("/api/workspaces/:id", async (req: Request, res: Response) => {
-    try {
-      const workspace = await storage.getWorkspace(req.params.id);
-
-      if (!workspace) {
-        res.status(404).json({ error: "Workspace not found" });
+      const cacheKey = "event_types";
+      
+      const cached = getCached<{ name: string; count: number; users: number; avgProps: number }[]>(cacheKey);
+      if (cached) {
+        res.json(cached);
         return;
       }
 
-      res.json({ workspace });
+      const eventTypes = await storage.getEventTypes();
+      
+      setCache(cacheKey, eventTypes);
+      res.json(eventTypes);
     } catch (error) {
-      console.error("Workspace fetch error:", error);
-      res.status(500).json({ error: "Failed to fetch workspace" });
+      console.error("Error fetching event types:", error);
+      res.status(500).json({ error: "Failed to fetch event types" });
     }
   });
 
-  // ==================== DEMO DATA SEEDING ====================
-
-  /**
-   * POST /api/seed/demo-data
-   * Seed demo analytics data for testing
-   */
-  app.post("/api/seed/demo-data", async (req: Request, res: Response) => {
+  app.get("/api/reports", async (req, res) => {
     try {
-      const workspaceId = DEMO_WORKSPACE_ID;
-      const events: string[] = [
-        "invoice_sent",
-        "invoice_viewed",
-        "invoice_paid",
-        "qr_scanned",
-        "link_clicked",
-        "email_sent",
-        "signup",
-        "login",
-      ];
-
-      // Generate 1000 demo events over the past 30 days
-      const promises = [];
-      for (let i = 0; i < 1000; i++) {
-        const randomDaysAgo = Math.floor(Math.random() * 30);
-        const timestamp = new Date(Date.now() - randomDaysAgo * 24 * 60 * 60 * 1000);
-        const event = events[Math.floor(Math.random() * events.length)];
-        const userId = `user-${Math.floor(Math.random() * 100)}`;
-
-        promises.push(
-          storage.createEvent({
-            workspaceId,
-            userId,
-            event,
-            properties: { amount: Math.floor(Math.random() * 5000), currency: "GBP" },
-            timestamp,
-            sessionId: `session-${i}`,
-          })
-        );
-      }
-
-      await Promise.all(promises);
-
-      res.json({ success: true, message: "Demo data seeded successfully", count: 1000 });
+      const reportsList = await storage.getReports();
+      res.json(reportsList);
     } catch (error) {
-      console.error("Demo data seeding error:", error);
-      res.status(500).json({ error: "Failed to seed demo data" });
+      console.error("Error fetching reports:", error);
+      res.status(500).json({ error: "Failed to fetch reports" });
     }
   });
+
+  app.get("/api/reports/:id", async (req, res) => {
+    try {
+      const report = await storage.getReportById(req.params.id);
+      if (!report) {
+        res.status(404).json({ error: "Report not found" });
+        return;
+      }
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching report:", error);
+      res.status(500).json({ error: "Failed to fetch report" });
+    }
+  });
+
+  app.post("/api/reports", async (req, res) => {
+    try {
+      const report = insertReportSchema.parse(req.body);
+      const newReport = await storage.createReport(report);
+      res.status(201).json(newReport);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid report data", details: error.errors });
+      } else {
+        console.error("Error creating report:", error);
+        res.status(500).json({ error: "Failed to create report" });
+      }
+    }
+  });
+
+  app.patch("/api/reports/:id", async (req, res) => {
+    try {
+      const report = insertReportSchema.partial().parse(req.body);
+      const updated = await storage.updateReport(req.params.id, report);
+      if (!updated) {
+        res.status(404).json({ error: "Report not found" });
+        return;
+      }
+      res.json(updated);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid report data", details: error.errors });
+      } else {
+        console.error("Error updating report:", error);
+        res.status(500).json({ error: "Failed to update report" });
+      }
+    }
+  });
+
+  app.delete("/api/reports/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteReport(req.params.id);
+      if (!deleted) {
+        res.status(404).json({ error: "Report not found" });
+        return;
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting report:", error);
+      res.status(500).json({ error: "Failed to delete report" });
+    }
+  });
+
+  app.post("/api/seed", async (req, res) => {
+    try {
+      const eventNames = ["page_view", "button_click", "form_submit", "video_play", "search", "add_to_cart", "checkout"];
+      const userIds = Array.from({ length: 50 }, (_, i) => `user_${1000 + i}`);
+      const eventsToCreate = [];
+      
+      const now = new Date();
+      for (let i = 0; i < 500; i++) {
+        const daysAgo = Math.floor(Math.random() * 30);
+        const hoursAgo = Math.floor(Math.random() * 24);
+        const timestamp = new Date(now);
+        timestamp.setDate(timestamp.getDate() - daysAgo);
+        timestamp.setHours(timestamp.getHours() - hoursAgo);
+        
+        eventsToCreate.push({
+          eventName: eventNames[Math.floor(Math.random() * eventNames.length)],
+          userId: userIds[Math.floor(Math.random() * userIds.length)],
+          properties: {
+            page: `/page-${Math.floor(Math.random() * 10)}`,
+            source: ["direct", "organic", "referral", "paid"][Math.floor(Math.random() * 4)],
+          },
+        });
+      }
+      
+      const created = await storage.createEvents(eventsToCreate);
+      metricsCache.clear();
+      res.json({ message: `Seeded ${created.length} events` });
+    } catch (error) {
+      console.error("Error seeding data:", error);
+      res.status(500).json({ error: "Failed to seed data" });
+    }
+  });
+
+  const httpServer = createServer(app);
 
   return httpServer;
 }

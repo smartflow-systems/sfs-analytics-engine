@@ -1,71 +1,69 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useQuery } from "@tanstack/react-query";
-import { Skeleton } from "@/components/ui/skeleton";
+import { useDateRange } from "@/lib/dateContext";
+import { format } from "date-fns";
 
-interface DailyData {
+interface VolumeData {
   date: string;
-  count: number;
+  events: number;
 }
 
 export function EventChart() {
-  const { data, isLoading } = useQuery<{ data: DailyData[] }>({
-    queryKey: ["/api/analytics/daily"],
-    refetchInterval: 60000, // Refresh every minute
+  const { dateRange } = useDateRange();
+
+  const { data, isLoading } = useQuery<VolumeData[]>({
+    queryKey: ["/api/analytics/volume", dateRange],
   });
 
-  const chartData = data?.data.map((item) => ({
-    date: new Date(item.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    events: item.count,
+  const formattedData = data?.map(item => ({
+    date: format(new Date(item.date), "MMM d"),
+    events: item.events,
   })) || [];
 
   return (
-    <Card data-testid="card-event-chart" className="glass-card rounded-xl gold-glow">
-      <CardHeader className="p-6">
-        <CardTitle className="text-lg font-semibold luxury-text">Event Volume</CardTitle>
-        <CardDescription className="text-sm text-sf-text-secondary">
-          Daily event tracking over the last 30 days
-        </CardDescription>
+    <Card data-testid="card-event-chart">
+      <CardHeader>
+        <CardTitle>Event Volume</CardTitle>
       </CardHeader>
-      <CardContent className="p-6 pt-0">
+      <CardContent>
         {isLoading ? (
           <Skeleton className="h-[300px] w-full" />
+        ) : formattedData.length === 0 ? (
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            No event data available. Send some events to see the chart.
+          </div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={chartData}>
+            <AreaChart data={formattedData}>
               <defs>
                 <linearGradient id="colorEvents" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--sf-gold))" stopOpacity={0.4} />
-                  <stop offset="50%" stopColor="hsl(var(--sf-gold))" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="hsl(var(--sf-gold))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--chart-1))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" opacity={0.3} />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
                 dataKey="date"
                 className="text-xs"
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                tickLine={{ stroke: "hsl(var(--border))" }}
+                tick={{ fill: "hsl(var(--muted-foreground))" }}
               />
               <YAxis
                 className="text-xs"
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
-                tickLine={{ stroke: "hsl(var(--border))" }}
+                tick={{ fill: "hsl(var(--muted-foreground))" }}
               />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "hsl(var(--popover))",
                   border: "1px solid hsl(var(--popover-border))",
                   borderRadius: "var(--radius)",
-                  fontSize: "12px",
                 }}
-                labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
               />
               <Area
                 type="monotone"
                 dataKey="events"
-                stroke="hsl(var(--sf-gold))"
-                strokeWidth={2.5}
+                stroke="hsl(var(--chart-1))"
                 fillOpacity={1}
                 fill="url(#colorEvents)"
               />
