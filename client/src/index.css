@@ -172,6 +172,26 @@
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    position: relative;
+    min-height: 100vh;
+  }
+
+  /* SFS Circuit Flow Background Canvas */
+  #circuit-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Ensure main content appears above circuit */
+  #root {
+    position: relative;
+    z-index: 1;
   }
 }
 
@@ -284,5 +304,76 @@
   .border.active-elevate-2:not(.no-active-interaction-elevate)::after,
   .border.hover-elevate:not(.no-hover-interaction-elevate)::after {
     inset: -1px;
+  }
+
+  /* ========================================================================== */
+  /* SFS GLASS-MORPHISM CARD SYSTEM */
+  /* ========================================================================== */
+
+  .sfs-glass-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 215, 0, 0.22);
+    border-radius: 1rem;
+    padding: clamp(16px, 2vw, 32px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 215, 0, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sfs-glass-card:hover {
+    border-color: rgba(230, 194, 0, 0.35);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 215, 0, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .sfs-flow-card {
+    background: linear-gradient(145deg, rgba(13, 13, 13, 0.8), rgba(59, 47, 47, 0.6));
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 215, 0, 0.25);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 215, 0, 0.1);
+  }
+
+  /* Gold gradient text utility */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #FFD700, #E6C200);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+  }
+
+  /* SFS Pulse animation for CTAs */
+  .sfs-pulse-on-hover:hover {
+    animation: sfs-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes sfs-pulse {
+    0%, 100% { box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3); }
+    50% { box-shadow: 0 4px 20px rgba(255, 215, 0, 0.5); }
+  }
+
+  /* SFS Button Styles */
+  .sfs-btn-gold {
+    background: linear-gradient(135deg, #FFD700, #E6C200);
+    color: #0D0D0D;
+    border: 1px solid rgba(230, 194, 0, 0.6);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .sfs-btn-gold:hover {
+    background: #E6C200;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 215, 0, 0.4);
+  }
+
+  .sfs-btn-gold:active {
+    transform: translateY(0);
   }
 }

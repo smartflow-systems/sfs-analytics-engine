@@ -1,8 +1,10 @@
 # SFS Analytics Engine
 
+[![CI/CD Pipeline](https://github.com/smartflow-systems/sfs-analytics-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/smartflow-systems/sfs-analytics-engine/actions/workflows/ci.yml)
 [![CD](https://github.com/smartflow-systems/sfs-analytics-engine/actions/workflows/cd.yml/badge.svg)](https://github.com/smartflow-systems/sfs-analytics-engine/actions/workflows/cd.yml)
+[![SmartFlow Systems](https://img.shields.io/badge/SmartFlow-Systems-FFD700?style=flat&logo=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAA4AAAAOCAYAAAAfSC3RAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAACZSURBVHgBnZLBDYAwDAPtzP+f1pE6Qjd](https://github.com/smartflow-systems)
 
-Part of the SmartFlow Systems ecosystem.
+Part of the **SmartFlow Systems** ecosystem.
 
 ## Overview
 
