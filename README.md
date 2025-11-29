@@ -30,7 +30,7 @@ A production-ready Mixpanel alternative built specifically for the SFS ecosystem
 - **Workspace isolation**: Each customer gets a dedicated workspace
 - **Usage-based pricing**:
   - Free: 10K events/month
-  - Pro: 100K events/month (£29/month)
+  - Pro: 100K events/month
   - Enterprise: Unlimited + custom dashboards
 - **API quota management**: Track and enforce event limits
 
@@ -53,7 +53,7 @@ A production-ready Mixpanel alternative built specifically for the SFS ecosystem
 - **Event Queue**: Redis (optional, for high throughput)
 
 ### SFS Design System
-- **Color Scheme**: HSL-based with SFS Blue primary (#3B82F6)
+- **Color Scheme**: HSL-based with SFS primary colors
 - **Typography**: Inter for UI, JetBrains Mono for code
 - **Elevation System**: Consistent hover/active states
 - **Dark Mode**: Full support with next-themes
@@ -92,7 +92,7 @@ npm run db:push
 npm run dev
 
 # In another terminal, seed demo data
-curl -X POST http://localhost:5000/api/seed/demo-data
+curl -X POST http://localhost:5000/api/seed
 ```
 
 5. **Open the dashboard**
@@ -104,113 +104,110 @@ http://localhost:5000
 
 ### Event Tracking
 
-**POST /api/track**
+**POST /api/events** - Track a single event
 ```json
 {
-  "workspaceId": "workspace-123",
+  "eventName": "invoice_sent",
   "userId": "user-456",
-  "event": "invoice_sent",
   "properties": {
     "amount": 1250,
     "currency": "GBP"
-  },
-  "sessionId": "session-789",
-  "timestamp": "2024-01-15T10:30:00Z"
+  }
+}
+```
+
+**POST /api/events/batch** - Track multiple events (up to 1000)
+```json
+{
+  "events": [
+    { "eventName": "page_view", "userId": "user-123", "properties": {} },
+    { "eventName": "button_click", "userId": "user-456", "properties": {} }
+  ]
 }
 ```
 
 ### Analytics
 
-**GET /api/analytics/overview**
-```
-Query params: ?workspaceId=xxx&startDate=2024-01-01&endDate=2024-01-31
-Response: { totalEvents, uniqueUsers, activeUsersNow, topEvents }
-```
-
-**GET /api/analytics/events**
-```
-Query params: ?workspaceId=xxx&eventType=invoice_sent&startDate=xxx&endDate=xxx
-Response: { events: [...], count: 123 }
-```
-
-**GET /api/analytics/daily**
-```
-Query params: ?workspaceId=xxx&startDate=xxx&endDate=xxx
-Response: { data: [{ date: "2024-01-15", count: 456 }] }
-```
-
-**GET /api/analytics/retention**
-```
-Query params: ?workspaceId=xxx&cohortDate=2024-01-01
-Response: { cohortSize, retention: [{ day: 7, retained: 45, retentionRate: "75.0" }] }
-```
-
-### Funnels
-
-**POST /api/funnels**
+**GET /api/analytics/stats?range=7d**
 ```json
 {
-  "workspaceId": "workspace-123",
-  "name": "Signup to Paid",
-  "steps": ["signup", "trial_started", "invoice_paid"]
+  "totalEvents": 12345,
+  "uniqueUsers": 456
 }
 ```
 
-**GET /api/funnels/:id/analyze**
-```
-Query params: ?startDate=xxx&endDate=xxx
-Response: { funnel, steps: [...], conversionRate: "12.5" }
-```
-
-### Alerts
-
-**POST /api/alerts**
+**GET /api/analytics/volume?range=7d**
 ```json
-{
-  "workspaceId": "workspace-123",
-  "name": "High Invoice Volume",
-  "type": "anomaly",
-  "condition": { event: "invoice_sent", threshold: 1000 },
-  "notificationChannels": { slack: "webhook-url", email: "alerts@example.com" }
-}
+[
+  { "date": "2024-01-15", "events": 456 },
+  { "date": "2024-01-16", "events": 523 }
+]
 ```
+
+**GET /api/analytics/top-events?range=7d**
+```json
+[
+  { "eventName": "page_view", "count": 5000, "change": 12.5 },
+  { "eventName": "button_click", "count": 3200, "change": -5.2 }
+]
+```
+
+**GET /api/analytics/event-types**
+```json
+[
+  { "name": "page_view", "count": 5000, "users": 234, "avgProps": 3 }
+]
+```
+
+### Reports
+
+**GET /api/reports** - List all reports
+**POST /api/reports** - Create a new report
+**GET /api/reports/:id** - Get report by ID
+**PATCH /api/reports/:id** - Update report
+**DELETE /api/reports/:id** - Delete report
 
 ## SDK Usage (for other SFS apps)
 
 ```typescript
-import { trackEvent } from '@sfs/analytics-sdk';
-
 // Track an event
-await trackEvent('invoice_sent', {
-  amount: 1250,
-  currency: 'GBP',
-  customer_id: 'cust_123'
+fetch('/api/events', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    eventName: 'invoice_sent',
+    userId: 'user_456',
+    properties: {
+      amount: 1250,
+      currency: 'GBP',
+      customer_id: 'cust_123'
+    }
+  })
 });
 
-// Track with user context
-await trackEvent('qr_scanned', {
-  qr_code_id: 'qr_789',
-  location: 'London'
-}, {
-  userId: 'user_456',
-  sessionId: 'session_abc'
+// Batch track events
+fetch('/api/events/batch', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    events: [
+      { eventName: 'qr_scanned', userId: 'user_456', properties: { location: 'London' } },
+      { eventName: 'link_clicked', userId: 'user_789', properties: { referrer: 'google' } }
+    ]
+  })
 });
 ```
 
 ## Database Schema
 
 ### Core Tables
-- **workspaces**: Multi-tenant workspace configuration
-- **events**: Event tracking data (partitioned by month)
-- **users**: Admin users and workspace owners
-- **funnels**: Funnel definitions for conversion tracking
-- **alerts**: Alert configurations
-- **daily_stats**: Pre-aggregated daily statistics
+- **events**: Event tracking data (id, event_name, user_id, timestamp, properties)
+- **reports**: Report definitions (id, name, description, type, config, created_at, updated_at)
 
 ### Indexes
-- Workspace ID + Timestamp (for fast date range queries)
+- Timestamp (for fast date range queries)
 - Event name (for filtering by event type)
-- User ID (for cohort analysis)
+- User ID (for user-specific analytics)
 
 ## Performance
 
@@ -221,33 +218,36 @@ await trackEvent('qr_scanned', {
 - **Event throughput**: 1,000 events/second
 
 ### Optimization Techniques
-- Redis event queue for batching (10-second windows)
-- PostgreSQL table partitioning by month
-- Materialized views for daily/weekly aggregates
-- Database connection pooling
+- In-memory caching for analytics queries (30-second TTL)
+- PostgreSQL table indexing
 - React Query caching (30s refresh)
+- Batch event ingestion support
 
-## Deployment
+## Project Structure
 
-### Production Checklist
-- [ ] Set DATABASE_URL to production PostgreSQL
-- [ ] Configure Redis for event queuing
-- [ ] Set up database backups (90-day retention)
-- [ ] Enable SSL for database connections
-- [ ] Configure CORS for allowed domains
-- [ ] Set up monitoring (e.g., Sentry, LogRocket)
-- [ ] Configure rate limiting
-- [ ] Set up CI/CD pipeline
-- [ ] Enable database replication (read replicas)
+```
+/client
+  /src
+    /components/ui    # shadcn components
+    /components       # custom components
+    /pages           # page components
+    /hooks           # custom hooks
+    /lib             # utilities
+/server
+  /routes.ts         # API routes
+  /storage.ts        # database operations
+  /db.ts             # database connection
+/shared
+  /schema.ts         # Drizzle schema & types
+```
 
-### Environment Variables
-See `.env.example` for all configuration options.
+## Development
 
-### Scaling
-- **Horizontal scaling**: Load balance across multiple Express instances
-- **Database**: Use read replicas for analytics queries
-- **Caching**: Redis for hot data (active sessions, real-time counters)
-- **CDN**: Serve static assets via CDN
+```bash
+npm run dev        # Start dev server (port 5000)
+npm run build      # Build for production
+npm run db:push    # Push database schema
+```
 
 ## Architecture Decisions
 
@@ -258,8 +258,8 @@ See `.env.example` for all configuration options.
 - Can scale to 10M events/day with proper partitioning
 - Migrate to ClickHouse when hitting 100M+ events/day
 
-### Why Direct Insert over Redis Queue?
-- For <1,000 events/sec, database can handle direct writes
+### Why In-Memory Cache over Redis?
+- For <1,000 events/sec, in-memory caching is sufficient
 - Redis adds operational complexity
 - Can add Redis later when throughput demands it
 
@@ -289,25 +289,14 @@ trackEvent('link_created', { original_url, custom_slug });
 trackEvent('link_clicked', { referrer, country });
 ```
 
-## Roadmap
+## Environment Variables
 
-- [ ] GraphQL API for complex queries
-- [ ] Webhook output to customer data warehouses
-- [ ] Custom dashboard builder (drag & drop)
-- [ ] A/B testing framework
-- [ ] User segmentation
-- [ ] Predictive churn models
-- [ ] Data export (CSV, JSON)
-- [ ] Mobile SDK (React Native)
-- [ ] Live visualization of event streams
+See `.env.example` for all configuration options.
+
+## Contributing
+
+Part of the SmartFlow Systems ecosystem. Follow organization coding standards.
 
 ## License
 
-MIT License - Built for SmartFlow Systems
-
-## Support
-
-For questions or issues:
-- GitHub Issues: [repository-url]/issues
-- Email: support@smartflowsystems.com
-- Docs: https://docs.sfs.dev/analytics
+Proprietary - SmartFlow Systems
