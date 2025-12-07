@@ -1,5 +1,5 @@
 import { type User, type InsertUser, type AnalyticsEvent, type InsertAnalyticsEvent } from "@shared/schema";
-import { randomUUID } from "crypto";
+import { randomUUID, randomInt } from "crypto";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -211,7 +211,7 @@ export class MemStorage implements IStorage {
         eventName: eventNames[Math.floor(Math.random() * eventNames.length)],
         eventType: eventTypes[Math.floor(Math.random() * eventTypes.length)],
         userId: Math.random() > 0.5 ? `user_${Math.floor(Math.random() * 100)}` : null,
-        sessionId: `session_${Math.floor(Math.random() * 50)}`,
+        sessionId: `session_${randomInt(0, 50)}`,
         metadata: {
           page: `/page-${Math.floor(Math.random() * 10)}`,
           duration: Math.floor(Math.random() * 300),
