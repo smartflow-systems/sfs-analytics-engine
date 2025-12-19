@@ -34,7 +34,7 @@ export default function Settings() {
                 <Input
                   id="api-key"
                   type="password"
-                  value="sk_test_4eC39HqLyjWDarjtT1zdp7dc"
+                  value="sk_test_••••••••••••••••••••••••"
                   readOnly
                   data-testid="input-api-key"
                 />

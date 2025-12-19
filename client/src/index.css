@@ -2,11 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+<<<<<<< HEAD
 /* ========================================
    SFS FAMILY LUXURY THEME
    Gold & Dark Marble Aesthetic
    ======================================== */
 
+=======
+/* LIGHT MODE - SmartFlow Systems Theme */
+>>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
 :root {
   /* Core SFS Family Colors */
   --sf-black: 30 15% 8%;
@@ -80,9 +84,49 @@
   --button-outline: rgba(255, 215, 0, 0.15);
   --badge-outline: rgba(255, 215, 0, 0.08);
   --opaque-button-border-intensity: -8;
+<<<<<<< HEAD
 
   /* Font System */
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+=======
+  --elevate-1: rgba(255, 215, 0, .06);
+  --elevate-2: rgba(255, 215, 0, .14);
+  --background: 48 10% 98%;
+  --foreground: 0 0% 5%;
+  --border: 45 15% 85%;
+  --card: 48 10% 95%;
+  --card-foreground: 0 0% 5%;
+  --card-border: 51 50% 75%;
+  --sidebar: 48 10% 92%;
+  --sidebar-foreground: 0 0% 5%;
+  --sidebar-border: 45 15% 80%;
+  --sidebar-primary: 51 100% 50%;
+  --sidebar-primary-foreground: 0 0% 5%;
+  --sidebar-accent: 45 15% 88%;
+  --sidebar-accent-foreground: 0 0% 5%;
+  --sidebar-ring: 51 100% 50%;
+  --popover: 48 10% 96%;
+  --popover-foreground: 0 0% 5%;
+  --popover-border: 45 15% 82%;
+  --primary: 51 100% 50%;
+  --primary-foreground: 0 0% 5%;
+  --secondary: 30 15% 82%;
+  --secondary-foreground: 0 0% 5%;
+  --muted: 45 10% 88%;
+  --muted-foreground: 30 10% 35%;
+  --accent: 51 91% 45%;
+  --accent-foreground: 0 0% 5%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 48 10% 98%;
+  --input: 45 15% 75%;
+  --ring: 51 100% 50%;
+  --chart-1: 51 100% 50%;
+  --chart-2: 30 91% 45%;
+  --chart-3: 45 85% 40%;
+  --chart-4: 35 91% 48%;
+  --chart-5: 25 80% 45%;
+  --font-sans: Inter, sans-serif;
+>>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
   --font-serif: Georgia, serif;
   --font-mono: JetBrains Mono, Menlo, monospace;
 
@@ -97,6 +141,88 @@
   --muted-border: hsl(var(--muted));
   --accent-border: hsl(var(--accent));
   --destructive-border: hsl(var(--destructive));
+<<<<<<< HEAD
+=======
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+}
+
+.dark {
+  --button-outline: rgba(255,215,0, .10);
+  --badge-outline: rgba(255,215,0, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255, 215, 0, .06);
+  --elevate-2: rgba(255, 215, 0, .14);
+  --background: 0 0% 5%;
+  --foreground: 48 10% 98%;
+  --border: 45 15% 20%;
+  --card: 0 0% 8%;
+  --card-foreground: 48 10% 98%;
+  --card-border: 51 50% 25%;
+  --sidebar: 30 15% 13%;
+  --sidebar-foreground: 48 10% 98%;
+  --sidebar-border: 45 15% 18%;
+  --sidebar-primary: 51 100% 50%;
+  --sidebar-primary-foreground: 0 0% 5%;
+  --sidebar-accent: 30 15% 16%;
+  --sidebar-accent-foreground: 48 10% 98%;
+  --sidebar-ring: 51 100% 50%;
+  --popover: 0 0% 7%;
+  --popover-foreground: 48 10% 98%;
+  --popover-border: 45 15% 15%;
+  --primary: 51 100% 50%;
+  --primary-foreground: 0 0% 5%;
+  --secondary: 30 15% 18%;
+  --secondary-foreground: 48 10% 98%;
+  --muted: 30 10% 12%;
+  --muted-foreground: 45 10% 65%;
+  --accent: 51 91% 45%;
+  --accent-foreground: 0 0% 5%;
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 48 10% 98%;
+  --input: 45 15% 25%;
+  --ring: 51 100% 50%;
+  --chart-1: 51 100% 60%;
+  --chart-2: 30 91% 55%;
+  --chart-3: 45 85% 50%;
+  --chart-4: 35 91% 58%;
+  --chart-5: 25 80% 55%;
+  --shadow-2xs: 0px 2px 0px 0px hsl(220 9% 98% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(220 9% 98% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(220 9% 98% / 0.00), 0px 1px 2px -1px hsl(220 9% 98% / 0.00);
+  --shadow: 0px 2px 0px 0px hsl(220 9% 98% / 0.00), 0px 1px 2px -1px hsl(220 9% 98% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(220 9% 98% / 0.00), 0px 2px 4px -1px hsl(220 9% 98% / 0.00);
+  --shadow-lg: 0px 2px 0px 0px hsl(220 9% 98% / 0.00), 0px 4px 6px -1px hsl(220 9% 98% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(220 9% 98% / 0.00), 0px 8px 10px -1px hsl(220 9% 98% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(220 9% 98% / 0.00);
+
+/* Fallback for older browsers */
+  --sidebar-primary-border: hsl(var(--sidebar-primary));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --sidebar-accent-border: hsl(var(--sidebar-accent));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --primary-border: hsl(var(--primary));
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --secondary-border: hsl(var(--secondary));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --muted-border: hsl(var(--muted));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --accent-border: hsl(var(--accent));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+
+  /* Fallback for older browsers */
+  --destructive-border: hsl(var(--destructive));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
+>>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
 }
 
 @layer base {
@@ -107,20 +233,36 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
     position: relative;
+<<<<<<< HEAD
   }
 
   /* Circuit canvas background */
   #sfs-circuit {
+=======
+    min-height: 100vh;
+  }
+
+  /* SFS Circuit Flow Background Canvas */
+  #circuit-canvas {
+>>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
     z-index: 0;
+<<<<<<< HEAD
     pointer-events: none;
   }
 
   /* Main app container above canvas */
+=======
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  /* Ensure main content appears above circuit */
+>>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
   #root {
     position: relative;
     z-index: 1;
@@ -205,6 +347,7 @@
     inset: -1px;
   }
 
+<<<<<<< HEAD
   /* ========================================
      LUXURY GOLD UTILITIES
      ======================================== */
@@ -329,4 +472,76 @@
 ::-moz-selection {
   background: hsl(var(--sf-gold) / 0.3);
   color: hsl(var(--sf-text-primary));
+=======
+  /* ========================================================================== */
+  /* SFS GLASS-MORPHISM CARD SYSTEM */
+  /* ========================================================================== */
+
+  .sfs-glass-card {
+    position: relative;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 215, 0, 0.22);
+    border-radius: 1rem;
+    padding: clamp(16px, 2vw, 32px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 215, 0, 0.1);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .sfs-glass-card:hover {
+    border-color: rgba(230, 194, 0, 0.35);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 215, 0, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .sfs-flow-card {
+    background: linear-gradient(145deg, rgba(13, 13, 13, 0.8), rgba(59, 47, 47, 0.6));
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 215, 0, 0.25);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 215, 0, 0.1);
+  }
+
+  /* Gold gradient text utility */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #FFD700, #E6C200);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-weight: 700;
+  }
+
+  /* SFS Pulse animation for CTAs */
+  .sfs-pulse-on-hover:hover {
+    animation: sfs-pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes sfs-pulse {
+    0%, 100% { box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3); }
+    50% { box-shadow: 0 4px 20px rgba(255, 215, 0, 0.5); }
+  }
+
+  /* SFS Button Styles */
+  .sfs-btn-gold {
+    background: linear-gradient(135deg, #FFD700, #E6C200);
+    color: #0D0D0D;
+    border: 1px solid rgba(230, 194, 0, 0.6);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+    transition: all 0.2s ease;
+  }
+
+  .sfs-btn-gold:hover {
+    background: #E6C200;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(255, 215, 0, 0.4);
+  }
+
+  .sfs-btn-gold:active {
+    transform: translateY(0);
+  }
+>>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
 }

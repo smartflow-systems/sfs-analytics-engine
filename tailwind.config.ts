@@ -91,6 +91,15 @@ export default {
           busy: "rgb(239 68 68)",
           offline: "rgb(156 163 175)",
         },
+        // SFS Brand Colors
+        sfs: {
+          black: "#0D0D0D",
+          brown: "#3B2F2F",
+          gold: "#FFD700",
+          "gold-bright": "#FFDD00",
+          "gold-2": "#E6C200",
+          beige: "#F5F5DC",
+        },
       },
       fontFamily: {
         sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
