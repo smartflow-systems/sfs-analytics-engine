@@ -17,9 +17,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Search, Download, FileJson, FileSpreadsheet } from "lucide-react";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/lib/auth";
+import { useToast } from "@/hooks/use-toast";
 
 interface EventType {
   name: string;
@@ -40,14 +50,35 @@ export default function Events() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const { currentWorkspace, token } = useAuth();
+  const { toast } = useToast();
 
   const { data: eventTypes, isLoading: typesLoading } = useQuery<EventType[]>({
-    queryKey: ["/api/analytics/event-types"],
+    queryKey: ['event-types', currentWorkspace?.id],
+    queryFn: async () => {
+      if (!currentWorkspace) return [];
+      const response = await fetch(`/api/workspaces/${currentWorkspace.id}/analytics/event-types`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error('Failed to fetch event types');
+      return response.json();
+    },
+    enabled: !!currentWorkspace && !!token,
   });
 
   const { data: eventDetails, isLoading: detailsLoading } = useQuery<Event[]>({
-    queryKey: ["/api/events", selectedEvent],
-    enabled: !!selectedEvent,
+    queryKey: ['events', currentWorkspace?.id, selectedEvent],
+    queryFn: async () => {
+      if (!currentWorkspace || !selectedEvent) return [];
+      const response = await fetch(
+        `/api/workspaces/${currentWorkspace.id}/events?eventName=${encodeURIComponent(selectedEvent)}&limit=1000`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (!response.ok) throw new Error('Failed to fetch events');
+      return response.json();
+    },
+    enabled: !!currentWorkspace && !!selectedEvent && !!token,
   });
 
   const filteredEvents = eventTypes?.filter((event) =>
@@ -60,6 +91,94 @@ export default function Events() {
   };
 
   const selectedEventDetails = eventDetails?.filter(e => e.eventName === selectedEvent) || [];
+
+  const exportToCSV = async () => {
+    if (!currentWorkspace || !token) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetch(
+        `/api/workspaces/${currentWorkspace.id}/events?limit=10000`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch events');
+
+      const events: Event[] = await response.json();
+
+      // Convert to CSV
+      const headers = ['Event ID', 'Event Name', 'User ID', 'Timestamp', 'Properties'];
+      const rows = events.map(event => [
+        event.id,
+        event.eventName,
+        event.userId || '',
+        new Date(event.timestamp).toISOString(),
+        JSON.stringify(event.properties),
+      ]);
+
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `events-${currentWorkspace.slug}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+
+      toast({
+        title: 'Export Successful',
+        description: `Exported ${events.length} events to CSV`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export events',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const exportToJSON = async () => {
+    if (!currentWorkspace || !token) return;
+
+    setIsExporting(true);
+    try {
+      const response = await fetch(
+        `/api/workspaces/${currentWorkspace.id}/events?limit=10000`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) throw new Error('Failed to fetch events');
+
+      const events: Event[] = await response.json();
+
+      // Download JSON
+      const jsonContent = JSON.stringify(events, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `events-${currentWorkspace.slug}-${new Date().toISOString().split('T')[0]}.json`;
+      link.click();
+
+      toast({
+        title: 'Export Successful',
+        description: `Exported ${events.length} events to JSON`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Export Failed',
+        description: 'Failed to export events',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -74,15 +193,37 @@ export default function Events() {
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-4">
             <CardTitle>Event Types</CardTitle>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search events..."
-                className="pl-9 w-64"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                data-testid="input-search-events"
-              />
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search events..."
+                  className="pl-9 w-64"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  data-testid="input-search-events"
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={isExporting || !eventTypes || eventTypes.length === 0}>
+                    <Download className="mr-2 h-4 w-4" />
+                    {isExporting ? 'Exporting...' : 'Export'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={exportToCSV}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    Export as CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportToJSON}>
+                    <FileJson className="mr-2 h-4 w-4" />
+                    Export as JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </CardHeader>

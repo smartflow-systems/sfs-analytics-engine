@@ -1,17 +1,50 @@
-import type { Express, Request, Response } from "express";
+import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-<<<<<<< HEAD
-import { 
-  insertEventSchema, 
-  batchInsertEventSchema, 
+import {
+  insertEventSchema,
+  batchInsertEventSchema,
   analyticsQuerySchema,
-  insertReportSchema 
+  insertReportSchema,
+  insertWorkspaceSchema,
+  insertFunnelSchema,
+  insertAlertSchema,
+  insertDashboardSchema,
+  loginSchema,
+  insertUserSchema,
+  insertApiKeySchema,
 } from "@shared/schema";
 import { z } from "zod";
+import {
+  type AuthRequest,
+  authenticateToken,
+  authenticateApiKey,
+  checkWorkspaceAccess,
+  checkUsageQuota,
+  requireAdmin,
+  hashPassword,
+  comparePassword,
+  generateToken,
+  generateApiKey,
+} from "./auth";
+import {
+  stripe,
+  createCheckoutSession,
+  handleCheckoutComplete,
+  handleSubscriptionUpdated,
+  handleSubscriptionDeleted,
+  createBillingPortalSession,
+  getSubscriptionDetails,
+  cancelSubscription,
+  reactivateSubscription,
+  type PlanType,
+  PRICING_TIERS,
+} from "./stripe";
+import type Stripe from "stripe";
 
+// Cache for analytics metrics
 const metricsCache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 30000; 
+const CACHE_TTL = 30000; // 30 seconds
 
 function getCached<T>(key: string): T | null {
   const cached = metricsCache.get(key);
@@ -28,7 +61,7 @@ function setCache(key: string, data: unknown): void {
 function getDateRange(range: string): { startDate: Date; endDate: Date } {
   const endDate = new Date();
   const startDate = new Date();
-  
+
   switch (range) {
     case "today":
       startDate.setHours(0, 0, 0, 0);
@@ -45,175 +78,458 @@ function getDateRange(range: string): { startDate: Date; endDate: Date } {
     default:
       startDate.setDate(startDate.getDate() - 7);
   }
-  
+
   return { startDate, endDate };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  app.post("/api/events", async (req, res) => {
+  // ===== HEALTH & STATUS =====
+  app.get("/health", (_, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/api/health", (_, res) => {
+    res.json({ status: "healthy", service: "sfs-analytics-engine" });
+  });
+
+  // ===== AUTHENTICATION ROUTES =====
+
+  // Register new user
+  app.post("/api/auth/register", async (req, res) => {
     try {
-      const event = insertEventSchema.parse(req.body);
+      const { username, email, password } = insertUserSchema.parse(req.body);
+
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+
+      const existingEmail = await storage.getUserByEmail(email);
+      if (existingEmail) {
+        return res.status(400).json({ error: "Email already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await hashPassword(password);
+
+      // Create user
+      const user = await storage.createUser({
+        username,
+        email,
+        password: hashedPassword,
+      });
+
+      // Create default workspace
+      const workspace = await storage.createWorkspace({
+        name: `${username}'s Workspace`,
+        slug: `${username}-workspace-${Date.now()}`,
+        ownerId: user.id,
+      });
+
+      // Add user as workspace member
+      await storage.addWorkspaceMember({
+        workspaceId: workspace.id,
+        userId: user.id,
+        role: "owner",
+      });
+
+      // Generate JWT token
+      const token = generateToken({
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      });
+
+      res.status(201).json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
+        workspace: {
+          id: workspace.id,
+          name: workspace.name,
+          slug: workspace.slug,
+          plan: workspace.plan,
+        },
+        token,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Registration failed" });
+    }
+  });
+
+  // Login
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = loginSchema.parse(req.body);
+
+      // Get user
+      const user = await storage.getUserByUsername(username);
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Check password
+      const isValid = await comparePassword(password, user.password);
+      if (!isValid) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Get user's workspaces
+      const workspaces = await storage.getWorkspacesByOwner(user.id);
+
+      // Generate JWT token
+      const token = generateToken({
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      });
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
+        workspaces: workspaces.map(w => ({
+          id: w.id,
+          name: w.name,
+          slug: w.slug,
+          plan: w.plan,
+          eventCount: w.eventCount,
+          eventQuota: w.eventQuota,
+        })),
+        token,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Login failed" });
+    }
+  });
+
+  // Get current user
+  app.get("/api/auth/me", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const user = await storage.getUser(req.user!.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const workspaces = await storage.getWorkspacesByOwner(user.id);
+
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role,
+        },
+        workspaces: workspaces.map(w => ({
+          id: w.id,
+          name: w.name,
+          slug: w.slug,
+          plan: w.plan,
+          eventCount: w.eventCount,
+          eventQuota: w.eventQuota,
+        })),
+      });
+    } catch (error) {
+      console.error("Get current user error:", error);
+      res.status(500).json({ error: "Failed to get user" });
+    }
+  });
+
+  // ===== WORKSPACE ROUTES =====
+
+  // Get workspace details
+  app.get("/api/workspaces/:workspaceId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      const workspace = await storage.getWorkspace(req.params.workspaceId);
+      const members = await storage.getWorkspaceMembers(req.params.workspaceId);
+
+      res.json({
+        workspace,
+        members,
+      });
+    } catch (error) {
+      console.error("Get workspace error:", error);
+      res.status(500).json({ error: "Failed to get workspace" });
+    }
+  });
+
+  // Update workspace
+  app.patch("/api/workspaces/:workspaceId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      const { name, plan, eventQuota } = req.body;
+      const updated = await storage.updateWorkspace(req.params.workspaceId, {
+        name,
+        plan,
+        eventQuota,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("Update workspace error:", error);
+      res.status(500).json({ error: "Failed to update workspace" });
+    }
+  });
+
+  // ===== API KEY ROUTES =====
+
+  // Get API keys for workspace
+  app.get("/api/workspaces/:workspaceId/api-keys", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      const keys = await storage.getApiKeysByWorkspace(req.params.workspaceId);
+      // Don't return the actual keys, only metadata
+      const safeKeys = keys.map(k => ({
+        id: k.id,
+        name: k.name,
+        lastUsedAt: k.lastUsedAt,
+        createdAt: k.createdAt,
+        expiresAt: k.expiresAt,
+        isActive: k.isActive,
+        keyPreview: k.key.substring(0, 12) + "..." + k.key.substring(k.key.length - 4),
+      }));
+
+      res.json(safeKeys);
+    } catch (error) {
+      console.error("Get API keys error:", error);
+      res.status(500).json({ error: "Failed to get API keys" });
+    }
+  });
+
+  // Create new API key
+  app.post("/api/workspaces/:workspaceId/api-keys", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      const { name } = insertApiKeySchema.parse(req.body);
+      const key = generateApiKey();
+
+      const apiKey = await storage.createApiKey({
+        workspaceId: req.params.workspaceId,
+        name,
+        key,
+      });
+
+      // Return the full key only on creation
+      res.status(201).json({
+        ...apiKey,
+        message: "Save this key securely. You won't be able to see it again.",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid input", details: error.errors });
+      }
+      console.error("Create API key error:", error);
+      res.status(500).json({ error: "Failed to create API key" });
+    }
+  });
+
+  // Delete API key
+  app.delete("/api/workspaces/:workspaceId/api-keys/:keyId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      const success = await storage.deleteApiKey(req.params.keyId);
+      if (!success) {
+        return res.status(404).json({ error: "API key not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Delete API key error:", error);
+      res.status(500).json({ error: "Failed to delete API key" });
+    }
+  });
+
+  // ===== EVENT TRACKING ROUTES =====
+
+  // Create single event (requires API key)
+  app.post("/api/events", authenticateApiKey, checkUsageQuota, async (req: AuthRequest, res) => {
+    try {
+      const event = insertEventSchema.parse({
+        ...req.body,
+        workspaceId: req.workspaceId,
+      });
+
       const newEvent = await storage.createEvent(event);
-      metricsCache.clear();
+      await storage.incrementWorkspaceEventCount(req.workspaceId!);
+
+      // Clear cache for this workspace
+      const cachePrefix = `workspace:${req.workspaceId}`;
+      for (const key of metricsCache.keys()) {
+        if (key.startsWith(cachePrefix)) {
+          metricsCache.delete(key);
+        }
+      }
+
       res.status(201).json(newEvent);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid event data", details: error.errors });
-      } else {
-        console.error("Error creating event:", error);
-        res.status(500).json({ error: "Failed to create event" });
+        return res.status(400).json({ error: "Invalid event data", details: error.errors });
       }
+      console.error("Error creating event:", error);
+      res.status(500).json({ error: "Failed to create event" });
     }
   });
 
-  app.post("/api/events/batch", async (req, res) => {
+  // Create batch events (requires API key)
+  app.post("/api/events/batch", authenticateApiKey, checkUsageQuota, async (req: AuthRequest, res) => {
     try {
       const { events: eventsList } = batchInsertEventSchema.parse(req.body);
-      const newEvents = await storage.createEvents(eventsList);
-      metricsCache.clear();
+
+      // Add workspace ID to all events
+      const eventsWithWorkspace = eventsList.map(e => ({
+        ...e,
+        workspaceId: req.workspaceId!,
+      }));
+
+      const newEvents = await storage.createEvents(eventsWithWorkspace);
+
+      // Increment event count
+      for (let i = 0; i < newEvents.length; i++) {
+        await storage.incrementWorkspaceEventCount(req.workspaceId!);
+      }
+
+      // Clear cache
+      const cachePrefix = `workspace:${req.workspaceId}`;
+      for (const key of metricsCache.keys()) {
+        if (key.startsWith(cachePrefix)) {
+          metricsCache.delete(key);
+        }
+      }
+
       res.status(201).json({ inserted: newEvents.length, events: newEvents });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid batch data", details: error.errors });
-      } else {
-        console.error("Error creating batch events:", error);
-        res.status(500).json({ error: "Failed to create events" });
+        return res.status(400).json({ error: "Invalid batch data", details: error.errors });
       }
+      console.error("Error creating batch events:", error);
+      res.status(500).json({ error: "Failed to create events" });
     }
   });
 
-  app.get("/api/events", async (req, res) => {
+  // Get events (authenticated users only)
+  app.get("/api/workspaces/:workspaceId/events", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const query = analyticsQuerySchema.parse({
         eventName: req.query.eventName,
+        eventType: req.query.eventType,
+        source: req.query.source,
+        userId: req.query.userId,
+        sessionId: req.query.sessionId,
         startDate: req.query.startDate,
         endDate: req.query.endDate,
         limit: req.query.limit ? Number(req.query.limit) : 100,
         offset: req.query.offset ? Number(req.query.offset) : 0,
       });
-      const eventsList = await storage.getEvents(query);
+
+      const eventsList = await storage.getEvents({
+        ...query,
+        workspaceId: req.params.workspaceId,
+      });
+
       res.json(eventsList);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid query parameters", details: error.errors });
-      } else {
-        console.error("Error fetching events:", error);
-        res.status(500).json({ error: "Failed to fetch events" });
+        return res.status(400).json({ error: "Invalid query parameters", details: error.errors });
       }
+      console.error("Error fetching events:", error);
+      res.status(500).json({ error: "Failed to fetch events" });
     }
   });
 
-  app.get("/api/events/:id", async (req, res) => {
-    try {
-      const event = await storage.getEventById(req.params.id);
-      if (!event) {
-        res.status(404).json({ error: "Event not found" });
-        return;
-      }
-      res.json(event);
-    } catch (error) {
-      console.error("Error fetching event:", error);
-      res.status(500).json({ error: "Failed to fetch event" });
-    }
-  });
+  // ===== ANALYTICS ROUTES =====
 
-  app.get("/api/analytics/stats", async (req, res) => {
+  // Get analytics stats
+  app.get("/api/workspaces/:workspaceId/analytics/stats", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const range = (req.query.range as string) || "7d";
-      const cacheKey = `stats_${range}`;
-      
-      const cached = getCached<{ totalEvents: number; uniqueUsers: number }>(cacheKey);
+      const { startDate, endDate } = getDateRange(range);
+
+      const cacheKey = `workspace:${req.params.workspaceId}:stats:${range}`;
+      const cached = getCached<unknown>(cacheKey);
       if (cached) {
-        res.json(cached);
-        return;
+        return res.json(cached);
       }
 
-      const { startDate, endDate } = getDateRange(range);
-      const stats = await storage.getEventStats(startDate, endDate);
-      
-      const prevEndDate = new Date(startDate);
+      const stats = await storage.getEventStats(req.params.workspaceId, startDate, endDate);
+
+      // Calculate previous period for trends
       const prevStartDate = new Date(startDate);
-      prevStartDate.setTime(prevStartDate.getTime() - (endDate.getTime() - startDate.getTime()));
-      
-      const prevStats = await storage.getEventStats(prevStartDate, prevEndDate);
-      
-      const eventChange = prevStats.totalEvents > 0 
-        ? ((stats.totalEvents - prevStats.totalEvents) / prevStats.totalEvents) * 100 
-        : 0;
-      const userChange = prevStats.uniqueUsers > 0 
-        ? ((stats.uniqueUsers - prevStats.uniqueUsers) / prevStats.uniqueUsers) * 100 
-        : 0;
+      const prevEndDate = new Date(startDate);
+      const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      prevStartDate.setDate(prevStartDate.getDate() - daysDiff);
+
+      const prevStats = await storage.getEventStats(req.params.workspaceId, prevStartDate, prevEndDate);
 
       const result = {
-        totalEvents: stats.totalEvents,
-        uniqueUsers: stats.uniqueUsers,
-        eventChange: Math.round(eventChange * 10) / 10,
-        userChange: Math.round(userChange * 10) / 10,
+        ...stats,
+        trends: {
+          eventsChange: prevStats.totalEvents > 0
+            ? ((stats.totalEvents - prevStats.totalEvents) / prevStats.totalEvents) * 100
+            : 0,
+          usersChange: prevStats.uniqueUsers > 0
+            ? ((stats.uniqueUsers - prevStats.uniqueUsers) / prevStats.uniqueUsers) * 100
+            : 0,
+        },
+        period: { startDate, endDate },
       };
-      
+
       setCache(cacheKey, result);
       res.json(result);
     } catch (error) {
       console.error("Error fetching stats:", error);
-      res.status(500).json({ error: "Failed to fetch stats" });
+      res.status(500).json({ error: "Failed to fetch statistics" });
     }
   });
 
-  app.get("/api/analytics/top-events", async (req, res) => {
+  // Get top events
+  app.get("/api/workspaces/:workspaceId/analytics/top-events", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const range = (req.query.range as string) || "7d";
-      const limit = Number(req.query.limit) || 10;
-      const cacheKey = `top_events_${range}_${limit}`;
-      
-      const cached = getCached<{ eventName: string; count: number }[]>(cacheKey);
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+      const { startDate, endDate } = getDateRange(range);
+
+      const cacheKey = `workspace:${req.params.workspaceId}:top-events:${range}:${limit}`;
+      const cached = getCached<unknown>(cacheKey);
       if (cached) {
-        res.json(cached);
-        return;
+        return res.json(cached);
       }
 
-      const { startDate, endDate } = getDateRange(range);
-      const topEvents = await storage.getTopEvents(limit, startDate, endDate);
-      
-      const prevEndDate = new Date(startDate);
-      const prevStartDate = new Date(startDate);
-      prevStartDate.setTime(prevStartDate.getTime() - (endDate.getTime() - startDate.getTime()));
-      const prevTopEvents = await storage.getTopEvents(limit, prevStartDate, prevEndDate);
-      
-      const prevCountMap = new Map(prevTopEvents.map(e => [e.eventName, e.count]));
-      
-      const result = topEvents.map(event => {
-        const prevCount = prevCountMap.get(event.eventName) || 0;
-        const change = prevCount > 0 
-          ? ((event.count - prevCount) / prevCount) * 100 
-          : (event.count > 0 ? 100 : 0);
-        return {
-          ...event,
-          change: Math.round(change),
-        };
-      });
-      
-      setCache(cacheKey, result);
-      res.json(result);
+      const topEvents = await storage.getTopEvents(req.params.workspaceId, limit, startDate, endDate);
+
+      setCache(cacheKey, topEvents);
+      res.json(topEvents);
     } catch (error) {
       console.error("Error fetching top events:", error);
       res.status(500).json({ error: "Failed to fetch top events" });
     }
   });
 
-  app.get("/api/analytics/volume", async (req, res) => {
+  // Get event volume
+  app.get("/api/workspaces/:workspaceId/analytics/volume", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const range = (req.query.range as string) || "7d";
-      const cacheKey = `volume_${range}`;
-      
-      const cached = getCached<{ date: string; events: number }[]>(cacheKey);
+      const { startDate, endDate } = getDateRange(range);
+
+      const cacheKey = `workspace:${req.params.workspaceId}:volume:${range}`;
+      const cached = getCached<unknown>(cacheKey);
       if (cached) {
-        res.json(cached);
-        return;
+        return res.json(cached);
       }
 
-      const { startDate, endDate } = getDateRange(range);
-      const volume = await storage.getEventVolume(startDate, endDate);
-      
+      const volume = await storage.getEventVolume(req.params.workspaceId, startDate, endDate);
+
       setCache(cacheKey, volume);
       res.json(volume);
     } catch (error) {
@@ -222,18 +538,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/analytics/event-types", async (req, res) => {
+  // Get event types
+  app.get("/api/workspaces/:workspaceId/analytics/event-types", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const cacheKey = "event_types";
-      
-      const cached = getCached<{ name: string; count: number; users: number; avgProps: number }[]>(cacheKey);
+      const cacheKey = `workspace:${req.params.workspaceId}:event-types`;
+      const cached = getCached<unknown>(cacheKey);
       if (cached) {
-        res.json(cached);
-        return;
+        return res.json(cached);
       }
 
-      const eventTypes = await storage.getEventTypes();
-      
+      const eventTypes = await storage.getEventTypes(req.params.workspaceId);
+
       setCache(cacheKey, eventTypes);
       res.json(eventTypes);
     } catch (error) {
@@ -242,494 +557,381 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/reports", async (req, res) => {
+  // ===== REPORT ROUTES =====
+
+  // Get reports
+  app.get("/api/workspaces/:workspaceId/reports", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const reportsList = await storage.getReports();
-      res.json(reportsList);
+      const reports = await storage.getReports(req.params.workspaceId);
+      res.json(reports);
     } catch (error) {
       console.error("Error fetching reports:", error);
       res.status(500).json({ error: "Failed to fetch reports" });
     }
   });
 
-  app.get("/api/reports/:id", async (req, res) => {
+  // Create report
+  app.post("/api/workspaces/:workspaceId/reports", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const report = await storage.getReportById(req.params.id);
-      if (!report) {
-        res.status(404).json({ error: "Report not found" });
-        return;
-      }
-      res.json(report);
-    } catch (error) {
-      console.error("Error fetching report:", error);
-      res.status(500).json({ error: "Failed to fetch report" });
-    }
-  });
+      const report = insertReportSchema.parse({
+        ...req.body,
+        workspaceId: req.params.workspaceId,
+        createdBy: req.user!.userId,
+      });
 
-  app.post("/api/reports", async (req, res) => {
-    try {
-      const report = insertReportSchema.parse(req.body);
       const newReport = await storage.createReport(report);
       res.status(201).json(newReport);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid report data", details: error.errors });
-      } else {
-        console.error("Error creating report:", error);
-        res.status(500).json({ error: "Failed to create report" });
+        return res.status(400).json({ error: "Invalid report data", details: error.errors });
       }
+      console.error("Error creating report:", error);
+      res.status(500).json({ error: "Failed to create report" });
     }
   });
 
-  app.patch("/api/reports/:id", async (req, res) => {
+  // Update report
+  app.patch("/api/workspaces/:workspaceId/reports/:reportId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const report = insertReportSchema.partial().parse(req.body);
-      const updated = await storage.updateReport(req.params.id, report);
+      const updated = await storage.updateReport(req.params.reportId, req.body);
       if (!updated) {
-        res.status(404).json({ error: "Report not found" });
-        return;
+        return res.status(404).json({ error: "Report not found" });
       }
       res.json(updated);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid report data", details: error.errors });
-      } else {
-        console.error("Error updating report:", error);
-        res.status(500).json({ error: "Failed to update report" });
-      }
+      console.error("Error updating report:", error);
+      res.status(500).json({ error: "Failed to update report" });
     }
   });
 
-  app.delete("/api/reports/:id", async (req, res) => {
+  // Delete report
+  app.delete("/api/workspaces/:workspaceId/reports/:reportId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const deleted = await storage.deleteReport(req.params.id);
-      if (!deleted) {
-        res.status(404).json({ error: "Report not found" });
-        return;
+      const success = await storage.deleteReport(req.params.reportId);
+      if (!success) {
+        return res.status(404).json({ error: "Report not found" });
       }
-      res.status(204).send();
+      res.json({ success: true });
     } catch (error) {
       console.error("Error deleting report:", error);
       res.status(500).json({ error: "Failed to delete report" });
     }
   });
 
-  app.post("/api/seed", async (req, res) => {
+  // ===== FUNNEL ROUTES =====
+
+  // Get funnels
+  app.get("/api/workspaces/:workspaceId/funnels", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const eventNames = ["page_view", "button_click", "form_submit", "video_play", "search", "add_to_cart", "checkout"];
-      const userIds = Array.from({ length: 50 }, (_, i) => `user_${1000 + i}`);
-      const eventsToCreate = [];
-      
-      const now = new Date();
-      for (let i = 0; i < 500; i++) {
-        const daysAgo = Math.floor(Math.random() * 30);
-        const hoursAgo = Math.floor(Math.random() * 24);
-        const timestamp = new Date(now);
-        timestamp.setDate(timestamp.getDate() - daysAgo);
-        timestamp.setHours(timestamp.getHours() - hoursAgo);
-        
-        eventsToCreate.push({
-          eventName: eventNames[Math.floor(Math.random() * eventNames.length)],
-          userId: userIds[Math.floor(Math.random() * userIds.length)],
-          properties: {
-            page: `/page-${Math.floor(Math.random() * 10)}`,
-            source: ["direct", "organic", "referral", "paid"][Math.floor(Math.random() * 4)],
-          },
-        });
-      }
-      
-      const created = await storage.createEvents(eventsToCreate);
-      metricsCache.clear();
-      res.json({ message: `Seeded ${created.length} events` });
+      const funnels = await storage.getFunnels(req.params.workspaceId);
+      res.json(funnels);
     } catch (error) {
-      console.error("Error seeding data:", error);
-      res.status(500).json({ error: "Failed to seed data" });
-=======
-import { insertAnalyticsEventSchema } from "@shared/schema";
-
-export async function registerRoutes(app: Express): Promise<Server> {
-  // ============================================================================
-  // HEALTH CHECK ENDPOINT - SFS Standard
-  // ============================================================================
-  app.get("/health", (_req: Request, res: Response) => {
-    res.json({
-      ok: true,
-      service: "sfs-analytics-engine",
-      version: "1.0.0",
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  app.get("/api/health", (_req: Request, res: Response) => {
-    res.json({
-      ok: true,
-      service: "sfs-analytics-engine",
-      version: "1.0.0",
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  // ============================================================================
-  // ANALYTICS EVENTS API
-  // ============================================================================
-
-  // Track a new event
-  app.post("/api/events", async (req: Request, res: Response) => {
-    try {
-      const validatedData = insertAnalyticsEventSchema.parse(req.body);
-
-      // Extract IP and User Agent from request
-      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'unknown';
-      const userAgent = req.headers['user-agent'] || 'unknown';
-
-      const event = await storage.createEvent({
-        ...validatedData,
-        ipAddress,
-        userAgent,
-      });
-
-      res.status(201).json({
-        success: true,
-        message: "Event tracked successfully",
-        event,
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: "Invalid event data",
-        error: error.message,
-      });
+      console.error("Error fetching funnels:", error);
+      res.status(500).json({ error: "Failed to fetch funnels" });
     }
   });
 
-  // Get events with filtering
-  app.get("/api/events", async (req: Request, res: Response) => {
+  // Create funnel
+  app.post("/api/workspaces/:workspaceId/funnels", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const {
-        limit,
-        offset,
-        eventType,
-        source,
-        userId,
-        sessionId,
-        startDate,
-        endDate,
-      } = req.query;
-
-      const events = await storage.getEvents({
-        limit: limit ? parseInt(limit as string) : undefined,
-        offset: offset ? parseInt(offset as string) : undefined,
-        eventType: eventType as string,
-        source: source as string,
-        userId: userId as string,
-        sessionId: sessionId as string,
-        startDate: startDate ? new Date(startDate as string) : undefined,
-        endDate: endDate ? new Date(endDate as string) : undefined,
+      const funnel = insertFunnelSchema.parse({
+        ...req.body,
+        workspaceId: req.params.workspaceId,
+        createdBy: req.user!.userId,
       });
 
-      const totalCount = await storage.getEventCount();
-
-      res.json({
-        success: true,
-        count: events.length,
-        totalCount,
-        events,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch events",
-        error: error.message,
-      });
+      const newFunnel = await storage.createFunnel(funnel);
+      res.status(201).json(newFunnel);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid funnel data", details: error.errors });
+      }
+      console.error("Error creating funnel:", error);
+      res.status(500).json({ error: "Failed to create funnel" });
     }
   });
 
-  // Get events by type
-  app.get("/api/events/type/:eventType", async (req: Request, res: Response) => {
-    try {
-      const { eventType } = req.params;
-      const events = await storage.getEventsByType(eventType);
+  // ===== ALERT ROUTES =====
 
-      res.json({
-        success: true,
-        eventType,
-        count: events.length,
-        events,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch events by type",
-        error: error.message,
-      });
+  // Get alerts
+  app.get("/api/workspaces/:workspaceId/alerts", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      const alerts = await storage.getAlerts(req.params.workspaceId);
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
     }
   });
 
-  // Get events by source
-  app.get("/api/events/source/:source", async (req: Request, res: Response) => {
+  // Create alert
+  app.post("/api/workspaces/:workspaceId/alerts", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const { source } = req.params;
-      const events = await storage.getEventsBySource(source);
+      const alert = insertAlertSchema.parse({
+        ...req.body,
+        workspaceId: req.params.workspaceId,
+        createdBy: req.user!.userId,
+      });
 
-      res.json({
-        success: true,
-        source,
-        count: events.length,
-        events,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch events by source",
-        error: error.message,
-      });
+      const newAlert = await storage.createAlert(alert);
+      res.status(201).json(newAlert);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid alert data", details: error.errors });
+      }
+      console.error("Error creating alert:", error);
+      res.status(500).json({ error: "Failed to create alert" });
     }
   });
 
-  // ============================================================================
-  // ANALYTICS AGGREGATIONS & INSIGHTS
-  // ============================================================================
+  // ===== DASHBOARD ROUTES =====
 
-  // Get analytics summary/overview
-  app.get("/api/analytics/summary", async (req: Request, res: Response) => {
+  // Get dashboards
+  app.get("/api/workspaces/:workspaceId/dashboards", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const totalEvents = await storage.getEventCount();
-      const topEvents = await storage.getTopEvents(10);
-
-      // Get recent events (last 100)
-      const recentEvents = await storage.getEvents({ limit: 100 });
-
-      // Calculate unique users and sessions
-      const uniqueUsers = new Set(recentEvents.filter(e => e.userId).map(e => e.userId)).size;
-      const uniqueSessions = new Set(recentEvents.filter(e => e.sessionId).map(e => e.sessionId)).size;
-
-      // Calculate events by type
-      const eventsByType: Record<string, number> = {};
-      recentEvents.forEach(event => {
-        eventsByType[event.eventType] = (eventsByType[event.eventType] || 0) + 1;
-      });
-
-      // Calculate events by source
-      const eventsBySource: Record<string, number> = {};
-      recentEvents.forEach(event => {
-        if (event.source) {
-          eventsBySource[event.source] = (eventsBySource[event.source] || 0) + 1;
-        }
-      });
-
-      res.json({
-        success: true,
-        summary: {
-          totalEvents,
-          uniqueUsers,
-          uniqueSessions,
-          topEvents,
-          eventsByType,
-          eventsBySource,
-        },
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch analytics summary",
-        error: error.message,
-      });
+      const dashboards = await storage.getDashboards(req.params.workspaceId);
+      res.json(dashboards);
+    } catch (error) {
+      console.error("Error fetching dashboards:", error);
+      res.status(500).json({ error: "Failed to fetch dashboards" });
     }
   });
 
-  // Get top events
-  app.get("/api/analytics/top-events", async (req: Request, res: Response) => {
+  // Create dashboard
+  app.post("/api/workspaces/:workspaceId/dashboards", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-      const topEvents = await storage.getTopEvents(limit);
+      const dashboard = insertDashboardSchema.parse({
+        ...req.body,
+        workspaceId: req.params.workspaceId,
+        createdBy: req.user!.userId,
+      });
 
-      res.json({
-        success: true,
-        topEvents,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch top events",
-        error: error.message,
-      });
+      const newDashboard = await storage.createDashboard(dashboard);
+      res.status(201).json(newDashboard);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid dashboard data", details: error.errors });
+      }
+      console.error("Error creating dashboard:", error);
+      res.status(500).json({ error: "Failed to create dashboard" });
     }
   });
 
-  // Get event trends over time
-  app.get("/api/analytics/trends", async (req: Request, res: Response) => {
-    try {
-      const period = (req.query.period as 'hour' | 'day' | 'week' | 'month') || 'day';
-      const trends = await storage.getEventTrends(period);
+  // ===== BILLING & STRIPE ROUTES =====
 
-      res.json({
-        success: true,
-        period,
-        trends,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch event trends",
-        error: error.message,
-      });
-    }
+  // Get pricing tiers
+  app.get("/api/billing/pricing", (_, res) => {
+    res.json(PRICING_TIERS);
   });
 
-  // Get events by date range
-  app.get("/api/analytics/range", async (req: Request, res: Response) => {
+  // Create checkout session for plan upgrade
+  app.post("/api/billing/create-checkout", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const { startDate, endDate } = req.query;
+      if (!stripe) {
+        return res.status(503).json({ error: "Billing is not configured" });
+      }
 
-      if (!startDate || !endDate) {
+      const { plan, successUrl, cancelUrl } = req.body;
+      const workspaceId = req.params.workspaceId || req.body.workspaceId;
+
+      if (!plan || !successUrl || !cancelUrl || !workspaceId) {
         return res.status(400).json({
-          success: false,
-          message: "startDate and endDate are required",
+          error: "Missing required fields: plan, successUrl, cancelUrl, workspaceId"
         });
       }
 
-      const events = await storage.getEventsByDateRange(
-        new Date(startDate as string),
-        new Date(endDate as string)
+      // Validate plan type
+      if (!PRICING_TIERS[plan as PlanType]) {
+        return res.status(400).json({ error: "Invalid plan type" });
+      }
+
+      const user = await storage.getUser(req.user!.userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const session = await createCheckoutSession(
+        workspaceId,
+        plan as PlanType,
+        successUrl,
+        cancelUrl,
+        user.email
       );
 
-      res.json({
-        success: true,
-        startDate,
-        endDate,
-        count: events.length,
-        events,
-      });
-    } catch (error: any) {
+      res.json({ sessionId: session.id, url: session.url });
+    } catch (error) {
+      console.error("Create checkout error:", error);
       res.status(500).json({
-        success: false,
-        message: "Failed to fetch events by date range",
-        error: error.message,
+        error: "Failed to create checkout session",
+        message: error instanceof Error ? error.message : "Unknown error"
       });
     }
   });
 
-  // ============================================================================
-  // SFS ECOSYSTEM INTEGRATION ENDPOINTS
-  // ============================================================================
-
-  // Webhook endpoint for other SFS services to send events
-  app.post("/api/webhook/event", async (req: Request, res: Response) => {
+  // Create billing portal session
+  app.post("/api/billing/portal", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
-      const { apiKey, events } = req.body;
-
-      // Simple API key validation (in production, use proper JWT/OAuth)
-      if (apiKey !== process.env.API_KEY && apiKey !== process.env.SFS_PAT) {
-        return res.status(401).json({
-          success: false,
-          message: "Unauthorized: Invalid API key",
-        });
+      if (!stripe) {
+        return res.status(503).json({ error: "Billing is not configured" });
       }
 
-      if (!events || !Array.isArray(events)) {
+      const { returnUrl, workspaceId } = req.body;
+
+      if (!returnUrl || !workspaceId) {
+        return res.status(400).json({ error: "Missing returnUrl or workspaceId" });
+      }
+
+      const session = await createBillingPortalSession(workspaceId, returnUrl);
+
+      res.json({ url: session.url });
+    } catch (error) {
+      console.error("Create billing portal error:", error);
+      res.status(500).json({
+        error: "Failed to create billing portal session",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Get subscription details
+  app.get("/api/billing/subscription/:workspaceId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      if (!stripe) {
+        return res.json({ subscription: null, upcomingInvoice: null });
+      }
+
+      const details = await getSubscriptionDetails(req.params.workspaceId);
+
+      res.json(details);
+    } catch (error) {
+      console.error("Get subscription error:", error);
+      res.status(500).json({ error: "Failed to get subscription details" });
+    }
+  });
+
+  // Cancel subscription
+  app.post("/api/billing/cancel", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: "Billing is not configured" });
+      }
+
+      const { workspaceId } = req.body;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: "Missing workspaceId" });
+      }
+
+      await cancelSubscription(workspaceId);
+
+      res.json({ success: true, message: "Subscription will be canceled at period end" });
+    } catch (error) {
+      console.error("Cancel subscription error:", error);
+      res.status(500).json({
+        error: "Failed to cancel subscription",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Reactivate subscription
+  app.post("/api/billing/reactivate", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: "Billing is not configured" });
+      }
+
+      const { workspaceId } = req.body;
+
+      if (!workspaceId) {
+        return res.status(400).json({ error: "Missing workspaceId" });
+      }
+
+      await reactivateSubscription(workspaceId);
+
+      res.json({ success: true, message: "Subscription reactivated" });
+    } catch (error) {
+      console.error("Reactivate subscription error:", error);
+      res.status(500).json({
+        error: "Failed to reactivate subscription",
+        message: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Stripe webhook handler
+  app.post("/api/webhooks/stripe", async (req, res) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: "Billing is not configured" });
+      }
+
+      const sig = req.headers["stripe-signature"];
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      if (!sig || !webhookSecret) {
+        return res.status(400).json({ error: "Missing signature or webhook secret" });
+      }
+
+      let event: Stripe.Event;
+
+      try {
+        // Verify webhook signature
+        event = stripe.webhooks.constructEvent(
+          req.body,
+          sig as string,
+          webhookSecret
+        );
+      } catch (err) {
+        console.error("Webhook signature verification failed:", err);
         return res.status(400).json({
-          success: false,
-          message: "Events array is required",
+          error: "Webhook signature verification failed",
+          message: err instanceof Error ? err.message : "Unknown error"
         });
       }
 
-      const createdEvents = [];
-      for (const eventData of events) {
-        const validatedData = insertAnalyticsEventSchema.parse(eventData);
-        const event = await storage.createEvent(validatedData);
-        createdEvents.push(event);
+      // Handle the event
+      switch (event.type) {
+        case "checkout.session.completed":
+          await handleCheckoutComplete(event.data.object as Stripe.Checkout.Session);
+          console.log(`Checkout completed: ${event.data.object.id}`);
+          break;
+
+        case "customer.subscription.updated":
+          await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+          console.log(`Subscription updated: ${event.data.object.id}`);
+          break;
+
+        case "customer.subscription.deleted":
+          await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          console.log(`Subscription deleted: ${event.data.object.id}`);
+          break;
+
+        case "invoice.payment_failed":
+          const invoice = event.data.object as Stripe.Invoice;
+          console.warn(`Payment failed for invoice: ${invoice.id}`);
+          // TODO: Send email notification to customer
+          break;
+
+        case "invoice.payment_succeeded":
+          const paidInvoice = event.data.object as Stripe.Invoice;
+          console.log(`Payment succeeded for invoice: ${paidInvoice.id}`);
+          break;
+
+        default:
+          console.log(`Unhandled event type: ${event.type}`);
       }
 
-      res.json({
-        success: true,
-        message: `${createdEvents.length} events tracked successfully`,
-        count: createdEvents.length,
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        message: "Failed to process webhook events",
-        error: error.message,
-      });
-    }
-  });
-
-  // Get analytics for specific SFS service
-  app.get("/api/integrations/:service/analytics", async (req: Request, res: Response) => {
-    try {
-      const { service } = req.params;
-      const events = await storage.getEventsBySource(service);
-
-      const summary = {
-        service,
-        totalEvents: events.length,
-        uniqueUsers: new Set(events.filter(e => e.userId).map(e => e.userId)).size,
-        uniqueSessions: new Set(events.filter(e => e.sessionId).map(e => e.sessionId)).size,
-        eventTypes: {} as Record<string, number>,
-      };
-
-      events.forEach(event => {
-        summary.eventTypes[event.eventType] = (summary.eventTypes[event.eventType] || 0) + 1;
-      });
-
-      res.json({
-        success: true,
-        summary,
-        recentEvents: events.slice(0, 50),
-      });
-    } catch (error: any) {
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Webhook handler error:", error);
       res.status(500).json({
-        success: false,
-        message: "Failed to fetch service analytics",
-        error: error.message,
+        error: "Webhook handler failed",
+        message: error instanceof Error ? error.message : "Unknown error"
       });
-    }
-  });
-
-  // ============================================================================
-  // UTILITY ENDPOINTS
-  // ============================================================================
-
-  // Get available event types
-  app.get("/api/meta/event-types", async (req: Request, res: Response) => {
-    try {
-      const events = await storage.getEvents({ limit: 1000 });
-      const eventTypes = [...new Set(events.map(e => e.eventType))];
-
-      res.json({
-        success: true,
-        eventTypes,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch event types",
-        error: error.message,
-      });
-    }
-  });
-
-  // Get available sources
-  app.get("/api/meta/sources", async (req: Request, res: Response) => {
-    try {
-      const events = await storage.getEvents({ limit: 1000 });
-      const sources = [...new Set(events.filter(e => e.source).map(e => e.source))];
-
-      res.json({
-        success: true,
-        sources,
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to fetch sources",
-        error: error.message,
-      });
->>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
     }
   });
 
   const httpServer = createServer(app);
-
   return httpServer;
 }

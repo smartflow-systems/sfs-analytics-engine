@@ -1,101 +1,122 @@
-<<<<<<< HEAD
-import { 
-  type User, 
-  type InsertUser, 
-  type Event, 
+import {
+  type User,
+  type InsertUser,
+  type Event,
   type InsertEvent,
   type Report,
   type InsertReport,
+  type Workspace,
+  type InsertWorkspace,
+  type WorkspaceMember,
+  type InsertWorkspaceMember,
+  type ApiKey,
+  type InsertApiKey,
+  type Funnel,
+  type InsertFunnel,
+  type Alert,
+  type InsertAlert,
+  type Dashboard,
+  type InsertDashboard,
   type AnalyticsQuery,
-  users, 
+  users,
   events,
-  reports
+  reports,
+  workspaces,
+  workspaceMembers,
+  apiKeys,
+  funnels,
+  alerts,
+  dashboards,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, gte, lte, count, countDistinct } from "drizzle-orm";
-=======
-import { type User, type InsertUser, type AnalyticsEvent, type InsertAnalyticsEvent } from "@shared/schema";
 import { randomUUID } from "crypto";
 
-// modify the interface with any CRUD methods
-// you might need
->>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
-
 export interface IStorage {
+  // User methods
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-<<<<<<< HEAD
-  
+
+  // Workspace methods
+  getWorkspace(id: string): Promise<Workspace | undefined>;
+  getWorkspaceBySlug(slug: string): Promise<Workspace | undefined>;
+  getWorkspacesByOwner(ownerId: string): Promise<Workspace[]>;
+  createWorkspace(workspace: InsertWorkspace): Promise<Workspace>;
+  updateWorkspace(id: string, workspace: Partial<InsertWorkspace>): Promise<Workspace | undefined>;
+  incrementWorkspaceEventCount(id: string): Promise<void>;
+
+  // Workspace Member methods
+  getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]>;
+  addWorkspaceMember(member: InsertWorkspaceMember): Promise<WorkspaceMember>;
+  removeWorkspaceMember(workspaceId: string, userId: string): Promise<boolean>;
+
+  // API Key methods
+  getApiKey(key: string): Promise<ApiKey | undefined>;
+  getApiKeysByWorkspace(workspaceId: string): Promise<ApiKey[]>;
+  createApiKey(apiKey: InsertApiKey & { key: string }): Promise<ApiKey>;
+  updateApiKeyLastUsed(id: string): Promise<void>;
+  deleteApiKey(id: string): Promise<boolean>;
+
+  // Event methods
   createEvent(event: InsertEvent): Promise<Event>;
   createEvents(eventsList: InsertEvent[]): Promise<Event[]>;
-  getEvents(query: AnalyticsQuery): Promise<Event[]>;
+  getEvents(query: AnalyticsQuery & { workspaceId?: string }): Promise<Event[]>;
   getEventById(id: string): Promise<Event | undefined>;
-  
-  getEventStats(startDate?: Date, endDate?: Date): Promise<{
+
+  // Analytics methods
+  getEventStats(workspaceId: string, startDate?: Date, endDate?: Date): Promise<{
     totalEvents: number;
     uniqueUsers: number;
   }>;
-  getTopEvents(limit?: number, startDate?: Date, endDate?: Date): Promise<{
+  getTopEvents(workspaceId: string, limit?: number, startDate?: Date, endDate?: Date): Promise<{
     eventName: string;
     count: number;
   }[]>;
-  getEventVolume(startDate?: Date, endDate?: Date): Promise<{
+  getEventVolume(workspaceId: string, startDate?: Date, endDate?: Date): Promise<{
     date: string;
     events: number;
   }[]>;
-  getEventTypes(): Promise<{
+  getEventTypes(workspaceId: string): Promise<{
     name: string;
     count: number;
     users: number;
     avgProps: number;
   }[]>;
-  
-  getReports(): Promise<Report[]>;
+
+  // Report methods
+  getReports(workspaceId: string): Promise<Report[]>;
   getReportById(id: string): Promise<Report | undefined>;
   createReport(report: InsertReport): Promise<Report>;
   updateReport(id: string, report: Partial<InsertReport>): Promise<Report | undefined>;
   deleteReport(id: string): Promise<boolean>;
+
+  // Funnel methods
+  getFunnels(workspaceId: string): Promise<Funnel[]>;
+  getFunnelById(id: string): Promise<Funnel | undefined>;
+  createFunnel(funnel: InsertFunnel): Promise<Funnel>;
+  updateFunnel(id: string, funnel: Partial<InsertFunnel>): Promise<Funnel | undefined>;
+  deleteFunnel(id: string): Promise<boolean>;
+
+  // Alert methods
+  getAlerts(workspaceId: string): Promise<Alert[]>;
+  getActiveAlerts(workspaceId: string): Promise<Alert[]>;
+  getAlertById(id: string): Promise<Alert | undefined>;
+  createAlert(alert: InsertAlert): Promise<Alert>;
+  updateAlert(id: string, alert: Partial<InsertAlert>): Promise<Alert | undefined>;
+  deleteAlert(id: string): Promise<boolean>;
+
+  // Dashboard methods
+  getDashboards(workspaceId: string): Promise<Dashboard[]>;
+  getDashboardById(id: string): Promise<Dashboard | undefined>;
+  createDashboard(dashboard: InsertDashboard): Promise<Dashboard>;
+  updateDashboard(id: string, dashboard: Partial<InsertDashboard>): Promise<Dashboard | undefined>;
+  deleteDashboard(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
-=======
-
-  // Analytics Events
-  createEvent(event: InsertAnalyticsEvent): Promise<AnalyticsEvent>;
-  getEvents(options?: EventQueryOptions): Promise<AnalyticsEvent[]>;
-  getEventsByDateRange(startDate: Date, endDate: Date): Promise<AnalyticsEvent[]>;
-  getEventsByType(eventType: string): Promise<AnalyticsEvent[]>;
-  getEventsBySource(source: string): Promise<AnalyticsEvent[]>;
-  getEventCount(): Promise<number>;
-  getTopEvents(limit?: number): Promise<Array<{ eventName: string; count: number }>>;
-  getEventTrends(period: 'hour' | 'day' | 'week' | 'month'): Promise<Array<{ period: string; count: number }>>;
-}
-
-export interface EventQueryOptions {
-  limit?: number;
-  offset?: number;
-  eventType?: string;
-  source?: string;
-  userId?: string;
-  sessionId?: string;
-  startDate?: Date;
-  endDate?: Date;
-}
-
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private events: Map<string, AnalyticsEvent>;
-
-  constructor() {
-    this.users = new Map();
-    this.events = new Map();
-
-    // Seed with sample analytics data
-    this.seedSampleData();
-  }
-
->>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
+  // User methods
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -106,12 +127,97 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
-<<<<<<< HEAD
+  // Workspace methods
+  async getWorkspace(id: string): Promise<Workspace | undefined> {
+    const [workspace] = await db.select().from(workspaces).where(eq(workspaces.id, id));
+    return workspace;
+  }
+
+  async getWorkspaceBySlug(slug: string): Promise<Workspace | undefined> {
+    const [workspace] = await db.select().from(workspaces).where(eq(workspaces.slug, slug));
+    return workspace;
+  }
+
+  async getWorkspacesByOwner(ownerId: string): Promise<Workspace[]> {
+    return db.select().from(workspaces).where(eq(workspaces.ownerId, ownerId));
+  }
+
+  async createWorkspace(workspace: InsertWorkspace): Promise<Workspace> {
+    const [newWorkspace] = await db.insert(workspaces).values(workspace).returning();
+    return newWorkspace;
+  }
+
+  async updateWorkspace(id: string, workspace: Partial<InsertWorkspace>): Promise<Workspace | undefined> {
+    const [updated] = await db.update(workspaces)
+      .set({ ...workspace, updatedAt: new Date() })
+      .where(eq(workspaces.id, id))
+      .returning();
+    return updated;
+  }
+
+  async incrementWorkspaceEventCount(id: string): Promise<void> {
+    await db.update(workspaces)
+      .set({ eventCount: sql`${workspaces.eventCount} + 1` })
+      .where(eq(workspaces.id, id));
+  }
+
+  // Workspace Member methods
+  async getWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
+    return db.select().from(workspaceMembers).where(eq(workspaceMembers.workspaceId, workspaceId));
+  }
+
+  async addWorkspaceMember(member: InsertWorkspaceMember): Promise<WorkspaceMember> {
+    const [newMember] = await db.insert(workspaceMembers).values(member).returning();
+    return newMember;
+  }
+
+  async removeWorkspaceMember(workspaceId: string, userId: string): Promise<boolean> {
+    const result = await db.delete(workspaceMembers)
+      .where(and(
+        eq(workspaceMembers.workspaceId, workspaceId),
+        eq(workspaceMembers.userId, userId)
+      ))
+      .returning();
+    return result.length > 0;
+  }
+
+  // API Key methods
+  async getApiKey(key: string): Promise<ApiKey | undefined> {
+    const [apiKey] = await db.select().from(apiKeys).where(eq(apiKeys.key, key));
+    return apiKey;
+  }
+
+  async getApiKeysByWorkspace(workspaceId: string): Promise<ApiKey[]> {
+    return db.select().from(apiKeys).where(eq(apiKeys.workspaceId, workspaceId));
+  }
+
+  async createApiKey(apiKey: InsertApiKey & { key: string }): Promise<ApiKey> {
+    const [newApiKey] = await db.insert(apiKeys).values(apiKey).returning();
+    return newApiKey;
+  }
+
+  async updateApiKeyLastUsed(id: string): Promise<void> {
+    await db.update(apiKeys)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(apiKeys.id, id));
+  }
+
+  async deleteApiKey(id: string): Promise<boolean> {
+    const result = await db.delete(apiKeys).where(eq(apiKeys.id, id)).returning();
+    return result.length > 0;
+  }
+
+  // Event methods
   async createEvent(event: InsertEvent): Promise<Event> {
     const [newEvent] = await db.insert(events).values(event).returning();
     return newEvent;
@@ -123,11 +229,26 @@ export class MemStorage implements IStorage {
     return newEvents;
   }
 
-  async getEvents(query: AnalyticsQuery): Promise<Event[]> {
+  async getEvents(query: AnalyticsQuery & { workspaceId?: string }): Promise<Event[]> {
     const conditions = [];
-    
+
+    if (query.workspaceId) {
+      conditions.push(eq(events.workspaceId, query.workspaceId));
+    }
     if (query.eventName) {
       conditions.push(eq(events.eventName, query.eventName));
+    }
+    if (query.eventType) {
+      conditions.push(eq(events.eventType, query.eventType));
+    }
+    if (query.source) {
+      conditions.push(eq(events.source, query.source));
+    }
+    if (query.userId) {
+      conditions.push(eq(events.userId, query.userId));
+    }
+    if (query.sessionId) {
+      conditions.push(eq(events.sessionId, query.sessionId));
     }
     if (query.startDate) {
       conditions.push(gte(events.timestamp, new Date(query.startDate)));
@@ -151,14 +272,15 @@ export class MemStorage implements IStorage {
     return event;
   }
 
-  async getEventStats(startDate?: Date, endDate?: Date): Promise<{
+  // Analytics methods
+  async getEventStats(workspaceId: string, startDate?: Date, endDate?: Date): Promise<{
     totalEvents: number;
     uniqueUsers: number;
   }> {
-    const conditions = [];
+    const conditions = [eq(events.workspaceId, workspaceId)];
     if (startDate) conditions.push(gte(events.timestamp, startDate));
     if (endDate) conditions.push(lte(events.timestamp, endDate));
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     const [result] = await db.select({
       totalEvents: count(),
@@ -171,14 +293,14 @@ export class MemStorage implements IStorage {
     };
   }
 
-  async getTopEvents(limit = 10, startDate?: Date, endDate?: Date): Promise<{
+  async getTopEvents(workspaceId: string, limit = 10, startDate?: Date, endDate?: Date): Promise<{
     eventName: string;
     count: number;
   }[]> {
-    const conditions = [];
+    const conditions = [eq(events.workspaceId, workspaceId)];
     if (startDate) conditions.push(gte(events.timestamp, startDate));
     if (endDate) conditions.push(lte(events.timestamp, endDate));
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     const result = await db.select({
       eventName: events.eventName,
@@ -196,14 +318,14 @@ export class MemStorage implements IStorage {
     }));
   }
 
-  async getEventVolume(startDate?: Date, endDate?: Date): Promise<{
+  async getEventVolume(workspaceId: string, startDate?: Date, endDate?: Date): Promise<{
     date: string;
     events: number;
   }[]> {
-    const conditions = [];
+    const conditions = [eq(events.workspaceId, workspaceId)];
     if (startDate) conditions.push(gte(events.timestamp, startDate));
     if (endDate) conditions.push(lte(events.timestamp, endDate));
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     const result = await db.select({
       date: sql<string>`DATE(${events.timestamp})`,
@@ -220,7 +342,7 @@ export class MemStorage implements IStorage {
     }));
   }
 
-  async getEventTypes(): Promise<{
+  async getEventTypes(workspaceId: string): Promise<{
     name: string;
     count: number;
     users: number;
@@ -233,6 +355,7 @@ export class MemStorage implements IStorage {
       avgProps: sql<number>`AVG(COALESCE((SELECT count(*) FROM jsonb_object_keys(${events.properties}::jsonb)), 0))`,
     })
       .from(events)
+      .where(eq(events.workspaceId, workspaceId))
       .groupBy(events.eventName)
       .orderBy(desc(count()));
 
@@ -244,8 +367,11 @@ export class MemStorage implements IStorage {
     }));
   }
 
-  async getReports(): Promise<Report[]> {
-    return db.select().from(reports).orderBy(desc(reports.updatedAt));
+  // Report methods
+  async getReports(workspaceId: string): Promise<Report[]> {
+    return db.select().from(reports)
+      .where(eq(reports.workspaceId, workspaceId))
+      .orderBy(desc(reports.updatedAt));
   }
 
   async getReportById(id: string): Promise<Report | undefined> {
@@ -269,172 +395,105 @@ export class MemStorage implements IStorage {
   async deleteReport(id: string): Promise<boolean> {
     const result = await db.delete(reports).where(eq(reports.id, id)).returning();
     return result.length > 0;
-=======
-  async createEvent(insertEvent: InsertAnalyticsEvent): Promise<AnalyticsEvent> {
-    const id = randomUUID();
-    const event: AnalyticsEvent = {
-      id,
-      eventName: insertEvent.eventName,
-      eventType: insertEvent.eventType,
-      userId: insertEvent.userId || null,
-      sessionId: insertEvent.sessionId || null,
-      metadata: insertEvent.metadata || null,
-      source: insertEvent.source || null,
-      timestamp: new Date(),
-      ipAddress: insertEvent.ipAddress || null,
-      userAgent: insertEvent.userAgent || null,
-    };
-    this.events.set(id, event);
-    return event;
   }
 
-  async getEvents(options: EventQueryOptions = {}): Promise<AnalyticsEvent[]> {
-    let events = Array.from(this.events.values());
-
-    // Apply filters
-    if (options.eventType) {
-      events = events.filter(e => e.eventType === options.eventType);
-    }
-    if (options.source) {
-      events = events.filter(e => e.source === options.source);
-    }
-    if (options.userId) {
-      events = events.filter(e => e.userId === options.userId);
-    }
-    if (options.sessionId) {
-      events = events.filter(e => e.sessionId === options.sessionId);
-    }
-    if (options.startDate) {
-      events = events.filter(e => e.timestamp >= options.startDate!);
-    }
-    if (options.endDate) {
-      events = events.filter(e => e.timestamp <= options.endDate!);
-    }
-
-    // Sort by timestamp descending (newest first)
-    events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    // Apply pagination
-    const offset = options.offset || 0;
-    const limit = options.limit || 100;
-    return events.slice(offset, offset + limit);
+  // Funnel methods
+  async getFunnels(workspaceId: string): Promise<Funnel[]> {
+    return db.select().from(funnels)
+      .where(eq(funnels.workspaceId, workspaceId))
+      .orderBy(desc(funnels.createdAt));
   }
 
-  async getEventsByDateRange(startDate: Date, endDate: Date): Promise<AnalyticsEvent[]> {
-    return this.getEvents({ startDate, endDate });
+  async getFunnelById(id: string): Promise<Funnel | undefined> {
+    const [funnel] = await db.select().from(funnels).where(eq(funnels.id, id));
+    return funnel;
   }
 
-  async getEventsByType(eventType: string): Promise<AnalyticsEvent[]> {
-    return this.getEvents({ eventType });
+  async createFunnel(funnel: InsertFunnel): Promise<Funnel> {
+    const [newFunnel] = await db.insert(funnels).values(funnel).returning();
+    return newFunnel;
   }
 
-  async getEventsBySource(source: string): Promise<AnalyticsEvent[]> {
-    return this.getEvents({ source });
+  async updateFunnel(id: string, funnel: Partial<InsertFunnel>): Promise<Funnel | undefined> {
+    const [updated] = await db.update(funnels)
+      .set({ ...funnel, updatedAt: new Date() })
+      .where(eq(funnels.id, id))
+      .returning();
+    return updated;
   }
 
-  async getEventCount(): Promise<number> {
-    return this.events.size;
+  async deleteFunnel(id: string): Promise<boolean> {
+    const result = await db.delete(funnels).where(eq(funnels.id, id)).returning();
+    return result.length > 0;
   }
 
-  async getTopEvents(limit: number = 10): Promise<Array<{ eventName: string; count: number }>> {
-    const events = Array.from(this.events.values());
-    const eventCounts = new Map<string, number>();
-
-    events.forEach(event => {
-      const count = eventCounts.get(event.eventName) || 0;
-      eventCounts.set(event.eventName, count + 1);
-    });
-
-    return Array.from(eventCounts.entries())
-      .map(([eventName, count]) => ({ eventName, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, limit);
+  // Alert methods
+  async getAlerts(workspaceId: string): Promise<Alert[]> {
+    return db.select().from(alerts)
+      .where(eq(alerts.workspaceId, workspaceId))
+      .orderBy(desc(alerts.createdAt));
   }
 
-  async getEventTrends(period: 'hour' | 'day' | 'week' | 'month'): Promise<Array<{ period: string; count: number }>> {
-    const events = Array.from(this.events.values());
-    const trendMap = new Map<string, number>();
-
-    events.forEach(event => {
-      const periodKey = this.getPeriodKey(event.timestamp, period);
-      const count = trendMap.get(periodKey) || 0;
-      trendMap.set(periodKey, count + 1);
-    });
-
-    return Array.from(trendMap.entries())
-      .map(([period, count]) => ({ period, count }))
-      .sort((a, b) => a.period.localeCompare(b.period));
+  async getActiveAlerts(workspaceId: string): Promise<Alert[]> {
+    return db.select().from(alerts)
+      .where(and(
+        eq(alerts.workspaceId, workspaceId),
+        eq(alerts.isActive, true)
+      ))
+      .orderBy(desc(alerts.createdAt));
   }
 
-  private getPeriodKey(date: Date, period: 'hour' | 'day' | 'week' | 'month'): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-
-    switch (period) {
-      case 'hour':
-        return `${year}-${month}-${day} ${hour}:00`;
-      case 'day':
-        return `${year}-${month}-${day}`;
-      case 'week':
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        return `${weekStart.getFullYear()}-W${String(Math.ceil(weekStart.getDate() / 7)).padStart(2, '0')}`;
-      case 'month':
-        return `${year}-${month}`;
-      default:
-        return `${year}-${month}-${day}`;
-    }
+  async getAlertById(id: string): Promise<Alert | undefined> {
+    const [alert] = await db.select().from(alerts).where(eq(alerts.id, id));
+    return alert;
   }
 
-  private seedSampleData() {
-    // Generate sample events for the last 30 days
-    const now = new Date();
-    const eventTypes = ['page_view', 'click', 'form_submit', 'api_call', 'error'];
-    const eventNames = [
-      'Dashboard View',
-      'User Login',
-      'Report Generated',
-      'Export Data',
-      'Settings Updated',
-      'Chart Interaction',
-      'Filter Applied',
-      'Search Query',
-      'Button Click',
-      'Form Submission',
-    ];
-    const sources = ['SmartFlowSite', 'SocialScaleBooster', 'SFSDataQueryEngine', 'sfs-marketing-and-growth'];
+  async createAlert(alert: InsertAlert): Promise<Alert> {
+    const [newAlert] = await db.insert(alerts).values(alert).returning();
+    return newAlert;
+  }
 
-    for (let i = 0; i < 500; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
-      const hoursAgo = Math.floor(Math.random() * 24);
-      const minutesAgo = Math.floor(Math.random() * 60);
+  async updateAlert(id: string, alert: Partial<InsertAlert>): Promise<Alert | undefined> {
+    const [updated] = await db.update(alerts)
+      .set({ ...alert, updatedAt: new Date() })
+      .where(eq(alerts.id, id))
+      .returning();
+    return updated;
+  }
 
-      const timestamp = new Date(now);
-      timestamp.setDate(timestamp.getDate() - daysAgo);
-      timestamp.setHours(timestamp.getHours() - hoursAgo);
-      timestamp.setMinutes(timestamp.getMinutes() - minutesAgo);
+  async deleteAlert(id: string): Promise<boolean> {
+    const result = await db.delete(alerts).where(eq(alerts.id, id)).returning();
+    return result.length > 0;
+  }
 
-      const event: AnalyticsEvent = {
-        id: randomUUID(),
-        eventName: eventNames[Math.floor(Math.random() * eventNames.length)],
-        eventType: eventTypes[Math.floor(Math.random() * eventTypes.length)],
-        userId: Math.random() > 0.5 ? `user_${Math.floor(Math.random() * 100)}` : null,
-        sessionId: `session_${Math.floor(Math.random() * 50)}`,
-        metadata: {
-          page: `/page-${Math.floor(Math.random() * 10)}`,
-          duration: Math.floor(Math.random() * 300),
-        },
-        source: sources[Math.floor(Math.random() * sources.length)],
-        timestamp,
-        ipAddress: `192.168.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`,
-        userAgent: 'Mozilla/5.0',
-      };
+  // Dashboard methods
+  async getDashboards(workspaceId: string): Promise<Dashboard[]> {
+    return db.select().from(dashboards)
+      .where(eq(dashboards.workspaceId, workspaceId))
+      .orderBy(desc(dashboards.updatedAt));
+  }
 
-      this.events.set(event.id, event);
-    }
->>>>>>> fab568c6475a339b59d9300af6414b664c295e9e
+  async getDashboardById(id: string): Promise<Dashboard | undefined> {
+    const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, id));
+    return dashboard;
+  }
+
+  async createDashboard(dashboard: InsertDashboard): Promise<Dashboard> {
+    const [newDashboard] = await db.insert(dashboards).values(dashboard).returning();
+    return newDashboard;
+  }
+
+  async updateDashboard(id: string, dashboard: Partial<InsertDashboard>): Promise<Dashboard | undefined> {
+    const [updated] = await db.update(dashboards)
+      .set({ ...dashboard, updatedAt: new Date() })
+      .where(eq(dashboards.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteDashboard(id: string): Promise<boolean> {
+    const result = await db.delete(dashboards).where(eq(dashboards.id, id)).returning();
+    return result.length > 0;
   }
 }
 
