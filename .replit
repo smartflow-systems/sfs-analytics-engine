@@ -3,6 +3,10 @@ language = "nodejs"
 hidden = [".git", "node_modules", "dist", ".config"]
 modules = ["nodejs-20"]
 
+[deployment]
+run = ["sh", "-c", "npm run build && npm start"]
+deploymentTarget = "cloudrun"
+
 [[ports]]
-localPort = 5001
+localPort = 5000
 externalPort = 80
