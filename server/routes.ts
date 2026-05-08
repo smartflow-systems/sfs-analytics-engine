@@ -27,6 +27,7 @@ import {
   generateToken,
   generateApiKey,
 } from "./auth";
+import { requireAuth, requireOrg } from "@smartflow-systems/auth-core";
 import {
   stripe,
   createCheckoutSession,
@@ -354,7 +355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== EVENT TRACKING ROUTES =====
 
   // Create single event (requires API key)
-  app.post("/api/events", authenticateApiKey, checkUsageQuota, async (req: AuthRequest, res) => {
+  app.post("/api/events", requireAuth, requireOrg, authenticateApiKey, checkUsageQuota, async (req: AuthRequest, res) => {
     try {
       const event = insertEventSchema.parse({
         ...req.body,
@@ -383,7 +384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create batch events (requires API key)
-  app.post("/api/events/batch", authenticateApiKey, checkUsageQuota, async (req: AuthRequest, res) => {
+  app.post("/api/events/batch", requireAuth, requireOrg, authenticateApiKey, checkUsageQuota, async (req: AuthRequest, res) => {
     try {
       const { events: eventsList } = batchInsertEventSchema.parse(req.body);
 
@@ -419,7 +420,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get events (authenticated users only)
-  app.get("/api/workspaces/:workspaceId/events", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/events", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const query = analyticsQuerySchema.parse({
         eventName: req.query.eventName,
@@ -451,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ANALYTICS ROUTES =====
 
   // Get analytics stats
-  app.get("/api/workspaces/:workspaceId/analytics/stats", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/analytics/stats", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const range = (req.query.range as string) || "7d";
       const { startDate, endDate } = getDateRange(range);
@@ -494,7 +495,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get top events
-  app.get("/api/workspaces/:workspaceId/analytics/top-events", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/analytics/top-events", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const range = (req.query.range as string) || "7d";
       const limit = req.query.limit ? Number(req.query.limit) : 10;
@@ -517,7 +518,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get event volume
-  app.get("/api/workspaces/:workspaceId/analytics/volume", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/analytics/volume", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const range = (req.query.range as string) || "7d";
       const { startDate, endDate } = getDateRange(range);
@@ -539,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get event types
-  app.get("/api/workspaces/:workspaceId/analytics/event-types", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/analytics/event-types", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const cacheKey = `workspace:${req.params.workspaceId}:event-types`;
       const cached = getCached<unknown>(cacheKey);
@@ -560,7 +561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== REPORT ROUTES =====
 
   // Get reports
-  app.get("/api/workspaces/:workspaceId/reports", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/reports", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const reports = await storage.getReports(req.params.workspaceId);
       res.json(reports);
@@ -571,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create report
-  app.post("/api/workspaces/:workspaceId/reports", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.post("/api/workspaces/:workspaceId/reports", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const report = insertReportSchema.parse({
         ...req.body,
@@ -591,7 +592,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update report
-  app.patch("/api/workspaces/:workspaceId/reports/:reportId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.patch("/api/workspaces/:workspaceId/reports/:reportId", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const updated = await storage.updateReport(req.params.reportId, req.body);
       if (!updated) {
@@ -605,7 +606,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete report
-  app.delete("/api/workspaces/:workspaceId/reports/:reportId", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.delete("/api/workspaces/:workspaceId/reports/:reportId", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const success = await storage.deleteReport(req.params.reportId);
       if (!success) {
@@ -621,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== FUNNEL ROUTES =====
 
   // Get funnels
-  app.get("/api/workspaces/:workspaceId/funnels", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/funnels", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const funnels = await storage.getFunnels(req.params.workspaceId);
       res.json(funnels);
@@ -632,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create funnel
-  app.post("/api/workspaces/:workspaceId/funnels", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.post("/api/workspaces/:workspaceId/funnels", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const funnel = insertFunnelSchema.parse({
         ...req.body,
@@ -654,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== ALERT ROUTES =====
 
   // Get alerts
-  app.get("/api/workspaces/:workspaceId/alerts", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/alerts", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const alerts = await storage.getAlerts(req.params.workspaceId);
       res.json(alerts);
@@ -665,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create alert
-  app.post("/api/workspaces/:workspaceId/alerts", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.post("/api/workspaces/:workspaceId/alerts", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const alert = insertAlertSchema.parse({
         ...req.body,
@@ -687,7 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ===== DASHBOARD ROUTES =====
 
   // Get dashboards
-  app.get("/api/workspaces/:workspaceId/dashboards", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.get("/api/workspaces/:workspaceId/dashboards", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const dashboards = await storage.getDashboards(req.params.workspaceId);
       res.json(dashboards);
@@ -698,7 +699,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create dashboard
-  app.post("/api/workspaces/:workspaceId/dashboards", authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
+  app.post("/api/workspaces/:workspaceId/dashboards", requireAuth, requireOrg, authenticateToken, checkWorkspaceAccess, async (req: AuthRequest, res) => {
     try {
       const dashboard = insertDashboardSchema.parse({
         ...req.body,
