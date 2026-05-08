@@ -102,6 +102,7 @@ export type ApiKey = typeof apiKeys.$inferSelect;
 export const events = pgTable("events", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
+  orgId: text("org_id").notNull().default("default"),
   eventName: text("event_name").notNull(),
   eventType: text("event_type").notNull(), // page_view, click, form_submit, api_call, error, custom
   userId: text("user_id"),
@@ -146,6 +147,7 @@ export type Event = typeof events.$inferSelect;
 export const reports = pgTable("reports", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
+  orgId: text("org_id").notNull().default("default"),
   name: text("name").notNull(),
   description: text("description"),
   type: text("type").notNull().default("on-demand"), // on-demand, scheduled, real-time
@@ -172,6 +174,7 @@ export type Report = typeof reports.$inferSelect;
 export const funnels = pgTable("funnels", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
+  orgId: text("org_id").notNull().default("default"),
   name: text("name").notNull(),
   description: text("description"),
   steps: jsonb("steps").$type<Array<{ eventName: string; order: number }>>().notNull(),
@@ -195,6 +198,7 @@ export type Funnel = typeof funnels.$inferSelect;
 export const alerts = pgTable("alerts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
+  orgId: text("org_id").notNull().default("default"),
   name: text("name").notNull(),
   description: text("description"),
   condition: jsonb("condition").$type<Record<string, unknown>>().notNull(),
@@ -221,6 +225,7 @@ export type Alert = typeof alerts.$inferSelect;
 export const dashboards = pgTable("dashboards", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   workspaceId: varchar("workspace_id").notNull(),
+  orgId: text("org_id").notNull().default("default"),
   name: text("name").notNull(),
   description: text("description"),
   layout: jsonb("layout").$type<Array<Record<string, unknown>>>().default([]),
